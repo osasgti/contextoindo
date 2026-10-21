@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS = {
 /** Every effect the overlay can play; the control page lists them and can mute each one. */
 export const FX_NAMES = [
   'tick', 'hot', 'cold', 'flip', 'best', 'close', 'hotstreak', 'gift', 'bell', 'fanfare', 'countdown', 'heartbeat', 'reveal', 'breakSweep', 'roundStart', 'command',
+  'rowPop', 'outOfRange', 'climb', 'top3', 'like', 'follow', 'join', 'helper',
 ];
 
 const clamp01 = (v, d) => (Number.isFinite(Number(v)) ? Math.max(0, Math.min(1, Number(v))) : d);

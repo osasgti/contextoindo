@@ -30,6 +30,22 @@ function check(group, pairs) {
 // Overlay: dark glass over the dark stage. The glass is at most this light once blended.
 const o = tokens(readFileSync(new URL('../public/css/overlay.css', import.meta.url), 'utf8'), ':root');
 const glass = '#161d2f';
+// A colour at alpha a laid over an opaque background, as hex.
+const blend = (fg, bg, a) => `#${[1, 3, 5].map((i) => Math.round(parseInt(fg.slice(i, i + 2), 16) * a + parseInt(bg.slice(i, i + 2), 16) * (1 - a)).toString(16).padStart(2, '0')).join('')}`;
+// The guess word sits on a track (white at 5% over the glass). Each fill is translucent; these are its
+// strongest points (keep them in step with the .bar-fill rules), and the top-half gloss adds up to 12%
+// white where the letters are. The word is large bold text, so its threshold is 3:1.
+const track = blend('#ffffff', glass, 0.05);
+const FILL = { cold: [o.ice, 0.55], warm: [o.gold, 0.46], hot: [o.ember, 0.62], win: [o.mint, 0.5] };
+const fill = (k) => blend(FILL[k][0], track, FILL[k][1]);
+const gloss = (bg) => blend('#ffffff', bg, 0.12);
+check('Overlay guess track (large text)', [
+  ['word on its track', o.text, track],
+  ...Object.keys(FILL).flatMap((k) => [
+    [`word on the ${k} fill`, o.text, fill(k), 3],
+    [`word on the ${k} fill under the gloss`, o.text, gloss(fill(k)), 3],
+  ]),
+]);
 check('Overlay (dark)', [
   ['main text', o.text, glass],
   ['secondary text', o['text-2'], glass],

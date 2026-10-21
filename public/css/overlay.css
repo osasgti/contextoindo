@@ -158,13 +158,18 @@ body.is-hot #guessCount { color: var(--ember); text-shadow: 0 0 18px rgba(255, 1
 .topbar {
   grid-area: top;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  /* last word | the title with the guess count under it | timer */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 28px;
-  padding: 0 28px 0 32px;
+  padding: 0 32px;
   border-radius: 22px;
 }
-.brand { display: flex; align-items: baseline; gap: 12px; font-family: var(--display); font-weight: 800; font-size: 36px; letter-spacing: -0.02em; white-space: nowrap; }
+.brand-block { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.brand { display: flex; align-items: baseline; gap: 12px; font-family: var(--display); font-weight: 800; font-size: 34px; line-height: 1.05; letter-spacing: 0.01em; text-transform: uppercase; white-space: nowrap; }
+.brand-count { display: flex; align-items: baseline; gap: 8px; font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.brand-count-label::after { content: ':'; }
+.brand-count-value { font-family: var(--display); font-size: 22px; font-weight: 700; letter-spacing: 0; color: var(--text); transition: color 0.4s; }
 .brand-a { color: var(--text); }
 .brand-b {
   background: linear-gradient(100deg, var(--ember-deep), var(--ember) 45%, var(--gold));
@@ -173,19 +178,18 @@ body.is-hot #guessCount { color: var(--ember); text-shadow: 0 0 18px rgba(255, 1
   color: transparent;
 }
 
-.top-zones { display: flex; justify-content: center; align-items: stretch; gap: 0; height: 60px; }
 .zone {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0 30px;
+  height: 60px;
   min-width: 0;
-  border-left: 1px solid var(--line);
 }
-.zone:first-child { border-left: 0; }
+.zone-last { align-items: flex-start; }
+.zone-timer { align-items: flex-end; text-align: right; }
 .zone-label { font-size: 16px; font-weight: 600; color: var(--muted); line-height: 1.1; }
 .zone-value { font-family: var(--display); font-size: 28px; font-weight: 700; line-height: 1.2; color: var(--text); white-space: nowrap; }
-.zone-last .zone-value { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+.zone-last .zone-value { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .zone-timer .zone-value { min-width: 110px; transition: color 0.4s; }
 .zone-timer.is-late .zone-value { color: var(--ember); }
 .zone-timer.is-final .zone-value { color: var(--ember-deep); animation: pulse 1s steps(1) infinite; }
@@ -195,21 +199,6 @@ body.is-hot #guessCount { color: var(--ember); text-shadow: 0 0 18px rgba(255, 1
 .zone-timer.is-final .zone-value.beat { animation: thump 0.5s ease-out, pulse 1s steps(1) infinite; }
 @keyframes thump { 0% { transform: scale(1.14); } 100% { transform: scale(1); } }
 
-.mode-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 18px;
-  border-radius: 999px;
-  border: 1px solid rgba(94, 200, 255, 0.35);
-  background: rgba(94, 200, 255, 0.08);
-  font-size: 18px;
-  font-weight: 700;
-  color: #bfe8ff;
-  white-space: nowrap;
-}
-.mode-dot { width: 10px; height: 10px; border-radius: 50%; background: linear-gradient(135deg, var(--ice), var(--ember)); box-shadow: 0 0 12px rgba(var(--heat-rgb), 0.9); }
-.mode-badge.is-vector { border-color: rgba(255, 207, 92, 0.4); background: rgba(255, 207, 92, 0.08); color: #ffe7ad; }
 
 /* ------------------------------------------------------------ hero: the secret word */
 .hero {
@@ -330,16 +319,17 @@ body.is-hot #guessCount { color: var(--ember); text-shadow: 0 0 18px rgba(255, 1
 .row {
   --v: 0;
   --row-h: 56px;
+  --rk: 0.5;
   position: relative;
   height: var(--row-h);
   margin-bottom: 6px;
   display: grid;
-  grid-template-columns: 56px 44px 220px minmax(0, 1fr) 340px;
+  /* avatar | name | the word on its closeness track | rank */
+  grid-template-columns: 44px 170px minmax(0, 1fr) 150px;
   align-items: center;
-  gap: 16px;
-  padding: 0 18px 0 12px;
+  gap: 14px;
+  padding: 0 18px 0 16px;
   border-radius: var(--r-md);
-  --rk: 0.5;
   /* heat-map by rank: the best rows glow ember, the last ones stay ice */
   background:
     linear-gradient(90deg, rgba(255, 122, 60, calc(var(--rk) * 0.20)), transparent 62%),
@@ -355,54 +345,55 @@ body.is-hot #guessCount { color: var(--ember); text-shadow: 0 0 18px rgba(255, 1
 @keyframes trail { 0% { opacity: 0.9; transform: translateY(0) scaleX(0.7); } 100% { opacity: 0; transform: translateY(-34px) scaleX(1.1); } }
 .row.is-new { border-color: rgba(255, 255, 255, 0.75); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35), 0 0 30px -6px rgba(255, 255, 255, 0.35); }
 .row.is-win { background: linear-gradient(90deg, rgba(67, 230, 163, 0.28), rgba(67, 230, 163, 0.06)); border-color: rgba(67, 230, 163, 0.7); }
-/* a new row slides in quickly; its letter tiles then flip one after another and green ones bounce */
+/* a new row slides in quickly */
 .row.flip-in { animation: row-in 0.35s ease-out both; }
-.row.flip-in .tile { animation: tile-flip 0.5s cubic-bezier(0.3, 1.3, 0.5, 1) calc(var(--i, 0) * 70ms) both; }
-.row.flip-in .tile.g { animation: tile-flip 0.5s cubic-bezier(0.3, 1.3, 0.5, 1) calc(var(--i, 0) * 70ms) both, tile-bounce 0.45s ease-out calc(var(--i, 0) * 70ms + 0.5s) both; }
-@keyframes tile-flip { 0% { transform: perspective(300px) rotateX(-90deg); opacity: 0; } 100% { transform: perspective(300px) rotateX(0); opacity: 1; } }
-@keyframes tile-bounce { 40% { transform: translateY(-8px); } 70% { transform: translateY(1px); } }
 @keyframes row-in { from { transform: translateY(-12px); opacity: 0.2; } to { transform: none; opacity: 1; } }
-.row-pos { font-family: var(--display); font-size: 20px; font-weight: 600; color: var(--muted); text-align: right; white-space: nowrap; }
-.row-pos.rank { font-size: 22px; color: var(--text-2); }
-.row.hot .row-pos.rank { color: var(--ember); }
-.row-name { font-size: 20px; font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row-word { min-width: 0; display: flex; align-items: center; gap: 4px; overflow: hidden; }
-.row-word .word-text { font-family: var(--display); font-size: 26px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tile {
-  --t: 38px;
-  width: var(--t);
-  height: var(--t);
-  flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: calc(var(--t) * 0.5);
-  text-transform: uppercase;
-  color: #d7deee;
-  background: var(--tile-miss);
+.row-name { font-size: 17px; font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the word sits on a track that fills from the left in proportion to its closeness */
+.row-track {
+  position: relative;
+  min-width: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
 }
-.tile.g { background: var(--tile-hit); color: #04281a; }
-.tile.y { background: var(--tile-near); color: #2c1d00; }
-.tile.dash { background: transparent; color: var(--muted); width: auto; }
-.row-meter { display: grid; grid-template-columns: 1fr 66px; align-items: center; gap: 12px; }
-.bar { position: relative; height: 12px; border-radius: 6px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+.row-track .word-text {
+  position: relative;
+  min-width: 0;
+  padding: 0 14px;
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+/* the fill stays translucent so the white word on top keeps its contrast; a solid edge marks where it ends */
 .bar-fill {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
   width: calc(var(--v) * 100%);
-  border-radius: 6px;
-  background: linear-gradient(90deg, var(--ice-deep), var(--ice));
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(58, 134, 240, 0.30), rgba(94, 200, 255, 0.55));
+  box-shadow: inset -3px 0 0 var(--ice), 0 0 16px -2px rgba(94, 200, 255, 0.5);
   transition: width 0.8s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
-.row.warm .bar-fill { background: linear-gradient(90deg, var(--ice), var(--gold)); }
-.row.hot .bar-fill { background: linear-gradient(90deg, var(--gold), var(--ember) 70%, var(--ember-deep)); }
-.row.is-win .bar-fill { background: linear-gradient(90deg, var(--mint), #b8ffe0); }
-.row-val { font-family: var(--display); font-size: 18px; font-weight: 600; color: var(--text-2); text-align: right; }
-.row-val.out { font-family: var(--body); font-size: 15px; color: var(--muted); }
+.row.warm .bar-fill { background: linear-gradient(90deg, rgba(255, 207, 92, 0.22), rgba(255, 207, 92, 0.46)); box-shadow: inset -3px 0 0 var(--gold), 0 0 16px -2px rgba(255, 207, 92, 0.5); }
+.row.hot .bar-fill { background: linear-gradient(90deg, rgba(255, 207, 92, 0.32), rgba(255, 122, 60, 0.62)); box-shadow: inset -3px 0 0 var(--ember), 0 0 18px -2px rgba(255, 122, 60, 0.7); }
+.row.is-win .bar-fill { background: linear-gradient(90deg, rgba(67, 230, 163, 0.35), rgba(67, 230, 163, 0.50)); box-shadow: inset -3px 0 0 var(--mint), 0 0 18px -2px rgba(67, 230, 163, 0.6); }
+.row.out .bar-fill { display: none; }
+.row-pos { font-family: var(--display); font-size: 24px; font-weight: 700; color: var(--text-2); text-align: right; white-space: nowrap; }
+.row.hot .row-pos { color: var(--ember); }
+.row.is-win .row-pos { color: var(--mint); }
+/* an out-of-range guess has no rank: the note takes its place */
+.row-pos.out { font-family: var(--body); font-size: 15px; font-weight: 600; line-height: 1.15; color: var(--muted); white-space: normal; }
 .more { font-size: 17px; font-weight: 600; color: var(--muted); text-align: center; padding-top: 4px; min-height: 22px; }
 .board-empty { display: none; flex: 1; place-items: center; text-align: center; color: var(--muted); font-size: 22px; line-height: 1.5; }
 .board.is-empty .board-empty { display: grid; }
@@ -509,14 +500,12 @@ kbd {
 .layout-portrait .howto { flex-wrap: wrap; white-space: normal; gap: 10px 26px; padding: 16px 24px; font-size: 21px; }
 
 /* ------------------------------------------------------------ portrait specifics */
-.layout-portrait .topbar { grid-template-columns: 1fr auto; grid-template-rows: auto auto; padding: 18px 26px; gap: 14px 20px; }
-.layout-portrait .top-zones { grid-column: 1 / -1; grid-row: 2; justify-content: space-between; }
-.layout-portrait .zone { padding: 0 18px; flex: 1; }
-.layout-portrait .zone:first-child { padding-left: 4px; }
-.layout-portrait .row { grid-template-columns: 50px 40px 170px minmax(0, 1fr) 150px; gap: 12px; padding: 0 14px 0 8px; }
+.layout-portrait .topbar { padding: 16px 26px; gap: 20px; }
+.layout-portrait .brand { font-size: 30px; }
+.layout-portrait .zone { height: 56px; }
+.layout-portrait .row { grid-template-columns: 40px 130px minmax(0, 1fr) 130px; gap: 12px; padding: 0 14px; }
 .layout-portrait .row .avatar { width: 40px; height: 40px; }
-.layout-portrait .row-meter { grid-template-columns: 1fr; }
-.layout-portrait .row-val { display: none; }
+.layout-portrait .row-track .word-text { font-size: 24px; }
 .layout-portrait .scores { padding: 20px 20px 16px; }
 .layout-portrait .leaders { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; }
 .layout-portrait .leader { margin-bottom: 8px; }
@@ -703,7 +692,6 @@ body.no-flash .slot.open.by-win.flip { animation: slot-flip 0.55s ease var(--d, 
 body.no-flash .slot.open.by-first.flip::before, body.no-flash .slot.open.by-free.flip::before { display: none; }
 body.no-flash .row.climb::after, body.no-flash .leader.climb::after { display: none; }
 body.no-flash .leader.bump .leader-pts { animation: none; }
-body.no-flash .row.flip-in .tile.g { animation: tile-flip 0.5s ease calc(var(--i, 0) * 70ms) both; }
 body.no-flash .row.is-new { box-shadow: none; }
 body.no-flash.is-hot .hero { box-shadow: none; }
 body.no-flash .scrim { animation-duration: 0.01ms; }
@@ -719,3 +707,56 @@ body.no-flash .aura-cold, body.no-flash .aura-hot { animation: none; }
 .reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 .reduced-motion .hearts { display: none; }
 .reduced-motion .aura-pulse { display: none; }
+
+/* ------------------------------------------------------------ polish: a finish on the board, no new motion */
+/* a coloured stripe on the left edge of each row, the same colour as its heat; it sits in the row's
+   left padding, so it never touches the avatar */
+.row::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 9px;
+  bottom: 9px;
+  width: 4px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--ice), var(--ice-deep));
+  box-shadow: 0 0 12px rgba(94, 200, 255, 0.45);
+}
+.row.warm::before { background: linear-gradient(180deg, var(--gold), var(--gold-deep)); box-shadow: 0 0 12px rgba(255, 207, 92, 0.45); }
+.row.hot::before { background: linear-gradient(180deg, var(--ember), var(--ember-deep)); box-shadow: 0 0 14px rgba(255, 122, 60, 0.6); }
+.row.is-win::before { background: linear-gradient(180deg, var(--mint), #b8ffe0); box-shadow: 0 0 14px rgba(67, 230, 163, 0.6); }
+.row.out::before { background: var(--muted); box-shadow: none; opacity: 0.6; }
+/* the winning row glows mint; it comes after .row.is-new, so on a winning newest row the mint glow wins */
+.row.is-win { box-shadow: 0 0 28px -8px rgba(67, 230, 163, 0.55); }
+
+/* the fills get a soft gloss on their top half (their heat glow is in the .bar-fill rules) */
+.bar-fill::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 50%;
+  border-radius: 10px 10px 0 0;
+  background: linear-gradient(rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0));
+}
+
+/* the best guess on the board shines gold (not the winning row, which is mint, nor an out-of-range note) */
+.rows > .row:first-child:not(.is-win) .row-pos.rank:not(.out) { color: var(--gold); text-shadow: 0 0 16px rgba(255, 207, 92, 0.55); }
+
+/* a thin warm line across the top of the board panel */
+.board::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--ember), var(--gold), transparent);
+  opacity: 0.75;
+}
+
+/* the leaders get a faint inner highlight so the cards look lifted */
+.leader { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04); }
+

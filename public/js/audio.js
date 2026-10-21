@@ -7,7 +7,10 @@
 //            minute, and a heartbeat sits under the last 30 seconds.
 //   effects  tile flips, guess ticks, hot/cold chimes, a chord for a new best guess, close-call and
 //            hot-streak stings, per-gift chimes, a win fanfare that grows with the streak, the
-//            countdown, the reveal and break sweeps, chat-command pops.
+//            countdown, the reveal and break sweeps, chat-command pops; on the board a pop for a new
+//            row, a whoosh when rows climb, a sparkle into the top 3 and a "nuh-uh" for an
+//            out-of-range word; for the audience a like sparkle, a follow pluck, a join ding and a
+//            helper shimmer.
 //
 // Every effect can be muted on its own (setMuted), and music ducks under text-to-speech.
 // URL options: ?sound=0 (mute all), ?music=0 (mute music only), ?volume=0..1 (master).
@@ -305,9 +308,11 @@ export class Sound {
     g.gain.exponentialRampToValueAtTime(0.0001, t + a + decay);
   }
 
+  /** True at most once every `ms` per name. The first call always passes, even right after page load. */
   _throttle(name, ms) {
     const now = performance.now();
-    if (now - (this.last[name] || 0) < ms) return false;
+    const prev = this.last[name];
+    if (prev != null && now - prev < ms) return false;
     this.last[name] = now;
     return true;
   }
@@ -826,6 +831,66 @@ export class Sound {
     this._tone(1175, 0.08, 'sine', 0.06, 0.06);
   }
 
+  // ------------------------------------------------------------ board and audience effects
+  /** A guess with no vector (out of range): a short buzzy "nuh-uh", two low notes falling a fourth. */
+  outOfRange() {
+    if (!this._fx('outOfRange') || !this._throttle('outOfRange', 400) || !this._claim(0.25)) return;
+    this._tone(midi(57), 0.06, 'square', 0.028);
+    this._tone(midi(52), 0.09, 'square', 0.028, 0.08);
+    this._noise(0.05, 260, 1.5, 0.04, 'lowpass');
+  }
+
+  /** A guess lands in the top three of the board: a bright, quick three-note sparkle upwards. */
+  top3() {
+    if (!this._fx('top3') || !this._throttle('top3', 800) || !this._claim(0.7)) return;
+    [81, 86, 93].forEach((n, k) => {
+      this._tone(midi(n), 0.16, 'sine', 0.07, k * 0.055);
+      this._tone(midi(n) * 2, 0.08, 'sine', 0.018, k * 0.055);
+    });
+  }
+
+  /** A row climbs the board: a short, airy whoosh that rises. */
+  climb() {
+    if (!this._fx('climb') || !this._throttle('climb', 350) || !this._claim(0.4)) return;
+    this._noise(0.3, 500, 1.6, 0.035, 'bandpass', 0, 2600, this.sfx, 0.08);
+    this._tone(330, 0.28, 'sine', 0.018, 0, 2);
+  }
+
+  /** A new row lands on the board: a small, soft pop. */
+  rowPop() {
+    if (!this._fx('rowPop') || !this._throttle('rowPop', 150) || !this._claim(0.1)) return;
+    this._tone(880, 0.05, 'sine', 0.05, 0, 0.35, this.sfx, 0.002);
+  }
+
+  /** Likes: a faint, very high sparkle, at most once every 1.5 s however many likes arrive. */
+  like() {
+    if (!this._fx('like') || !this._throttle('like', 1500) || !this._claim(0.4)) return;
+    this._tone(midi(96), 0.12, 'sine', 0.022);
+    this._tone(midi(100), 0.16, 'sine', 0.018, 0.05);
+    this._noise(0.12, 7000, 0.7, 0.012, 'highpass', 0.02);
+  }
+
+  /** A new follower: a warm two-note pluck, a fourth apart. */
+  follow() {
+    if (!this._fx('follow') || !this._throttle('follow', 1200) || !this._claim(1.4)) return;
+    const t = this.ctx.currentTime + 0.02;
+    this._pluck(64, t, 0.11, this.sfx, 0.9);
+    this._pluck(69, t + 0.16, 0.11, this.sfx, 1.1);
+  }
+
+  /** A viewer joins (!main): a quiet, short, high ding. Throttled, so a wave of joins stays calm. */
+  join() {
+    if (!this._fx('join') || !this._throttle('join', 2500) || !this._claim(0.9)) return;
+    this._bell(midi(88), this.ctx.currentTime + 0.01, 0.035, 0.8);
+  }
+
+  /** Helper points after a win: a soft shimmer. `delay` (seconds) lets it land after the fanfare. */
+  helper(delay = 0) {
+    if (!this._fx('helper') || !this._throttle('helper', 1000) || !this._claim(delay + 0.9)) return;
+    [88, 93, 100].forEach((n, k) => this._tone(midi(n), 0.6, 'sine', 0.026, delay + k * 0.05, 0, this.sfx, 0.06));
+    this._noise(0.6, 6500, 0.6, 0.016, 'highpass', delay, 0, this.sfx, 0.12);
+  }
+
   /** Control page previews: the layers and heartbeat for a few seconds, as in minute five. */
   previewTension() {
     this._init();
@@ -874,6 +939,14 @@ export class Sound {
       breakSweep: () => this.breakSweep(5),
       roundStart: () => this.roundStart(),
       command: () => this.command(),
+      outOfRange: () => this.outOfRange(),
+      top3: () => this.top3(),
+      climb: () => this.climb(),
+      rowPop: () => this.rowPop(),
+      like: () => this.like(),
+      follow: () => this.follow(),
+      join: () => this.join(),
+      helper: () => this.helper(),
     }[name];
     if (!run) return false;
     // previews skip the throttles and mutes so each click is heard
@@ -912,7 +985,15 @@ export const EFFECTS = [
   { id: 'breakSweep', fx: 'breakSweep' },
   { id: 'roundStart', fx: 'roundStart' },
   { id: 'command', fx: 'command' },
+  { id: 'rowPop', fx: 'rowPop' },
+  { id: 'outOfRange', fx: 'outOfRange' },
+  { id: 'climb', fx: 'climb' },
+  { id: 'top3', fx: 'top3' },
+  { id: 'like', fx: 'like' },
+  { id: 'follow', fx: 'follow' },
+  { id: 'join', fx: 'join' },
+  { id: 'helper', fx: 'helper' },
 ];
 
 /** The mute switches: one per effect, in the order they are heard in a round. */
-export const FX_GROUPS = ['roundStart', 'tick', 'cold', 'hot', 'flip', 'best', 'close', 'hotstreak', 'command', 'gift', 'bell', 'countdown', 'heartbeat', 'fanfare', 'reveal', 'breakSweep'];
+export const FX_GROUPS = ['roundStart', 'tick', 'rowPop', 'outOfRange', 'cold', 'hot', 'climb', 'top3', 'flip', 'best', 'close', 'hotstreak', 'command', 'gift', 'like', 'follow', 'join', 'bell', 'countdown', 'heartbeat', 'fanfare', 'helper', 'reveal', 'breakSweep'];

@@ -83,8 +83,8 @@ No secrets are hard-coded. Keys live only in `.env`, which is git-ignored.
 - The vector file is loaded once at startup. Each word becomes a row of numbers, normalised to length 1, so the cosine similarity of two words is a dot product.
 - When a round starts, the game computes the similarity of every known word to the secret, and ranks them. Words with the same similarity share a rank (competition ranking: 1, 2, 2, 4). The secret is rank 1.
 - A guess gets the rank of its word. The board sorts by rank, best first.
-- **Closeness** is the bar on each row: `closeness(rank, N) = 1 − ln(rank) / ln(N)`, clamped to 0–1, where N is the number of vectors loaded. Rank 1 is 1.0 and the last rank is 0. It sets the row colour, the heat of the round, and the sound.
-- A KBBI word with no vector is **di luar jangkauan** (out of range). It counts as a guess, shows no rank and no bar, and never wins the close call.
+- **Closeness** is how far the word's track fills on each row (avatar, name, word, rank): `closeness(rank, N) = 1 − ln(rank) / ln(N)`, clamped to 0–1, where N is the number of vectors loaded. Rank 1 is 1.0 and the last rank is 0. It sets the row colour, the heat of the round, and the sound.
+- A KBBI word with no vector is **di luar jangkauan** (out of range). It counts as a guess, shows that note in place of a rank and no fill, and never wins the close call.
 - Guesses are never cut or padded to the answer's length. The hero shows the answer's length as hidden tiles.
 
 ## OBS
@@ -152,6 +152,8 @@ All sound is made in the browser with Web Audio, so there are no sound files. Ev
 
 - An ambient bed with layers that join at 3:00 and 5:00, and a tension filter that opens in the last minute.
 - A soft tick for each guess. A drone follows the closest guess, and a new best guess plays a soft chord.
+- On the board: a small pop when a new row lands, a whoosh when rows climb, a sparkle when a guess enters the top 3, and a short "nuh-uh" for a word that is out of range.
+- For the audience: a faint sparkle for likes (at most once every 1.5 seconds), a warm pluck for a follow, a quiet ding when a viewer joins, and a shimmer for the helper points after a win.
 - Gifts have chimes in the same key; a gift that is not in the list gets a neutral bell.
 - Wins have a fanfare that grows with the streak.
 - A reveal falls, goes silent for a moment, then lands. The break is one slow rise that resolves into the next round's start chime.

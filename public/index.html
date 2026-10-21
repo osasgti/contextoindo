@@ -18,25 +18,22 @@
 
   <main class="stage" id="stage">
     <header class="topbar glass">
-      <div class="brand" aria-label="Contexto Indo">
-        <span class="brand-a">Contexto</span><span class="brand-b">Indo</span>
+      <div class="zone zone-last">
+        <span class="zone-label" data-i18n="lastWord">Kata terakhir</span>
+        <span class="zone-value word" id="lastWord">–</span>
       </div>
-      <div class="top-zones">
-        <div class="zone">
-          <span class="zone-label" data-i18n="guesses">Tebakan</span>
-          <span class="zone-value num" id="guessCount">0</span>
+      <div class="brand-block">
+        <div class="brand" aria-label="Contexto Indo">
+          <span class="brand-a">Contexto</span><span class="brand-b">Indo</span>
         </div>
-        <div class="zone zone-last">
-          <span class="zone-label" data-i18n="lastWord">Kata terakhir</span>
-          <span class="zone-value word" id="lastWord">–</span>
-        </div>
-        <div class="zone zone-timer" id="timerZone">
-          <span class="zone-label" id="timerLabel" data-i18n="timeLeft">Sisa waktu</span>
-          <span class="zone-value num" id="timer">6:00</span>
+        <div class="brand-count">
+          <span class="brand-count-label" data-i18n="guesses">Tebakan</span>
+          <span class="brand-count-value num" id="guessCount">0</span>
         </div>
       </div>
-      <div class="mode-badge is-vector" id="modeBadge">
-        <span class="mode-dot"></span><span id="modeText">Makna</span>
+      <div class="zone zone-timer" id="timerZone">
+        <span class="zone-label" id="timerLabel" data-i18n="timeLeft">Sisa waktu</span>
+        <span class="zone-value num" id="timer">6:00</span>
       </div>
     </header>
 

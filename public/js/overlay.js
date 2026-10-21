@@ -28,6 +28,8 @@ const S = {
   slotKey: null,
   revealedSeen: new Set(),
   latestId: null,
+  boardNo: null, // the round the board last showed: board sounds play only for changes within one round
+  top3: [], // ids of the top three rows, to hear a guess enter them
   lastCountdown: null,
   lastBeat: null,
   phase: null,
@@ -136,7 +138,6 @@ function renderTop(st) {
   const r = st.round;
   $('guessCount').textContent = fmtNum(r?.guessCount ?? 0);
   $('lastWord').textContent = r?.lastWord ?? '–';
-  $('modeText').textContent = t('modeVector');
 }
 
 function classLabel(cls) {
@@ -224,21 +225,16 @@ function renderHero(st) {
   }
 }
 
-function rowMeter(e) {
-  if (e.outOfRange) return `<div class="row-meter"><span class="row-val out" style="grid-column:1/-1;text-align:left">${esc(t('outOfRange'))}</span></div>`;
-  return `<div class="row-meter"><div class="bar"><div class="bar-fill"></div></div><span class="row-val"></span></div>`;
-}
-
+/** avatar | name | the word on a track that fills by closeness | rank (or the out-of-range note) */
 function buildRow(e) {
   const u = shown(e.user);
   const li = el('li', 'row');
   li.dataset.id = e.id;
   li.dataset.safe = safeFlag();
-  li.appendChild(el('span', 'row-pos rank'));
   li.appendChild(avatarEl(u));
   li.appendChild(el('span', 'row-name', esc(u.name)));
-  li.appendChild(el('span', 'row-word', `<span class="word-text">${esc(e.word)}</span>`));
-  li.insertAdjacentHTML('beforeend', rowMeter(e));
+  li.appendChild(el('span', 'row-track', `<span class="bar-fill"></span><span class="word-text">${esc(e.word)}</span>`));
+  li.appendChild(el('span', 'row-pos rank'));
   return li;
 }
 
@@ -247,14 +243,17 @@ function decorateRow(li, e, r, rk = 0.5) {
   const v = e.closeness ?? 0;
   li.style.setProperty('--v', String(e.outOfRange ? 0 : v));
   li.style.setProperty('--rk', rk.toFixed(2));
-  li.querySelector('.row-pos').textContent = e.rank != null ? `#${fmtNum(e.rank)}` : '–';
+  const pos = li.querySelector('.row-pos');
+  pos.textContent = e.rank != null ? `#${fmtNum(e.rank)}` : e.outOfRange ? t('outOfRange') : '–';
+  pos.classList.toggle('out', e.rank == null && !!e.outOfRange);
+  li.classList.toggle('out', !!e.outOfRange);
   li.classList.toggle('hot', !e.outOfRange && v >= 0.67);
   li.classList.toggle('warm', !e.outOfRange && v >= 0.34 && v < 0.67);
   li.classList.toggle('is-new', e.id === r.newest?.id);
   li.classList.toggle('is-win', r.result?.reason === 'win' && e.word === r.result.word);
 }
 
-/** The tiles of a new row flip over one after another, then green ones bounce. */
+/** A new row slides in. */
 function playIn(li) {
   li.classList.add('flip-in');
   setTimeout(() => li.classList.remove('flip-in'), 1700);
@@ -309,10 +308,15 @@ function renderBoard(st) {
   const empty = !r || r.guessCount === 0;
   board.classList.toggle('is-empty', empty);
   $('boardEmpty').innerHTML = !r ? esc(t('boardIdle')) : t('boardEmpty');
+  // sounds only for live changes: same round as the last render, mid-round, not paused. A page
+  // load, a reconnect or a new round fills the board silently.
+  const live = !!r && S.boardNo === r.no && st.phase === 'playing' && !r.ended && !S.panic;
+  S.boardNo = r ? r.no : null;
   if (empty) {
     rows.innerHTML = '';
     latest.innerHTML = '';
     S.latestId = null;
+    S.top3 = [];
     $('more').textContent = '';
     return;
   }
@@ -339,6 +343,7 @@ function renderBoard(st) {
   const build = (e) => buildRow(e);
   build.stale = (node) => node.dataset.safe !== safeFlag();
   let climbers = 0;
+  let landed = false;
   reconcile(
     rows,
     items,
@@ -347,6 +352,7 @@ function renderBoard(st) {
     (node, e, i, isNew) => {
       decorateRow(node, e, r, items.length > 1 ? 1 - i / (items.length - 1) : 1);
       if (isNew && e.id === r.newest?.id) playIn(node);
+      if (isNew) landed = true;
     },
     (node, dx, dy) => {
       if (dy > 8 && climbers < 4 && !node.classList.contains('flip-in')) {
@@ -355,6 +361,16 @@ function renderBoard(st) {
       }
     },
   );
+  // a guess that enters the top three of a board with more than three rows sparkles; a new #1 is
+  // left to the "new closest" chord, which already marks it
+  const top3 = r.board.slice(0, 3).map((e) => e.id);
+  const enteredTop3 = live && r.board.length > 3 && top3.some((id, i) => i > 0 && !S.top3.includes(id));
+  S.top3 = top3;
+  if (live) {
+    if (landed) sound.rowPop();
+    if (climbers) sound.climb();
+    if (enteredTop3) sound.top3();
+  }
   const extra = r.guessCount - items.length;
   $('more').textContent = extra > 0 ? t('more', { n: fmtNum(extra) }) : '';
 }
@@ -779,7 +795,9 @@ function onEvt(evt) {
       if (evt.win) break; // the fanfare follows
       const v = e.outOfRange ? 0 : e.closeness ?? 0;
       sound.tick(v);
-      if (v >= 0.67) sound.hot();
+      // a word the game cannot rank gets its own "nuh-uh" instead of the cold thud
+      if (e.outOfRange) sound.outOfRange();
+      else if (v >= 0.67) sound.hot();
       else if (v < 0.2) sound.cold();
       // a new closest guess gets a soft chord
       if (!e.outOfRange && v > S.bestHeat + 0.03) {
@@ -839,16 +857,20 @@ function onEvt(evt) {
       S.pulse = Math.min(1, S.pulse + 0.2);
       break;
     case 'join':
-      popups.push('join', evt, at); // silent by design
+      popups.push('join', evt, at);
+      sound.join(); // quiet and throttled, with its own mute switch (joins used to be silent)
       break;
     case 'follow':
       popups.push('follow', evt, at);
+      sound.follow();
       break;
     case 'like':
       hearts.burst(evt.count);
+      sound.like();
       break;
     case 'helpers':
       popups.push('helper', evt, at);
+      sound.helper(1.6); // lands after the win fanfare's main hit
       break;
     case 'streak':
       popups.push('streak', evt, at);
