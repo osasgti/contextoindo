@@ -35,7 +35,8 @@ export function loadConfig(argv = process.argv.slice(2), env = process.env) {
     secretWordsEasy: env.SECRET_WORDS_EASY ? resolve(env.SECRET_WORDS_EASY) : resolve('data/secret_words_easy.txt'),
     secretWordsHard: env.SECRET_WORDS_HARD ? resolve(env.SECRET_WORDS_HARD) : resolve('data/secret_words_hard.txt'),
     eventLog: !['0', 'false', 'no', 'off'].includes(String(env.EVENT_LOG ?? '').toLowerCase()),
-    vectorsPath: env.VECTORS_PATH ? resolve(env.VECTORS_PATH) : '',
+    // the demo ships a 12-word vector file, so the ranking works without any data of your own
+    vectorsPath: env.VECTORS_PATH ? resolve(env.VECTORS_PATH) : demo ? fixture('vectors.vec') : '',
     vectorsMaxLines: Number(env.VECTORS_MAX_LINES) || 200000,
     dataDir: resolve(env.DATA_DIR || 'data'),
     streamchimeKey: String(env.STREAMCHIME_APP_KEY || '').trim(),
