@@ -49,7 +49,9 @@ export function createApp({ config, dict, secrets, tiers = null, vectors = null,
   const controls = new Set();
   const activity = [];
   const overlayAudio = new Map();
-  const sim = new SimSource({ game, words: [...(dict.words ?? [])].filter((w) => /^[a-z]{3,10}$/.test(w)), intensity: config.simIntensity });
+  // the simulator guesses real words that have vectors, so its guesses can be ranked
+  const simWords = vectors?.words?.length ? vectors.words : [...(dict.words ?? [])].filter((w) => /^[a-z]{3,10}$/.test(w));
+  const sim = new SimSource({ game, words: simWords, intensity: config.simIntensity });
   const live = liveSource ?? new StreamchimeSource({ appKey: config.streamchimeKey, username: config.tiktokUsername, log, debug: config.debugLive });
 
   const health = new HealthMonitor({ now });
@@ -141,6 +143,7 @@ export function createApp({ config, dict, secrets, tiers = null, vectors = null,
     scheduleState();
   });
   game.on('changed', () => scheduleState());
+  game.on('note', ({ text }) => pushLog('admin', text));
 
   const overlaySettings = () => ({
     lang: settings.lang,
@@ -237,10 +240,6 @@ export function createApp({ config, dict, secrets, tiers = null, vectors = null,
 
   const applySettings = (patch) => {
     const changed = settingsStore.update(patch);
-    if ('mode' in changed) {
-      const mode = game.setMode(changed.mode);
-      if (mode !== changed.mode) pushLog('admin', 'Mode vektor butuh VECTORS_PATH. Tetap mode huruf.');
-    }
     scheduleState();
     return changed;
   };
@@ -377,9 +376,9 @@ async function main() {
     try {
       vectors = await loadVectors(config.vectorsPath, { vocab: dict.words, maxLines: config.vectorsMaxLines, log: console.log });
     } catch (err) {
-      console.error(`[vectors] ${err.message}. Using letter-hint mode.`);
+      console.error(`[vectors] ${err.message}. Every guess will be out of range until this is fixed.`);
     }
-  } else console.log('[vectors] VECTORS_PATH not set: letter-hint mode');
+  } else console.log('[vectors] VECTORS_PATH not set: every guess will be out of range (no ranking)');
 
   const isLoopback = ['127.0.0.1', 'localhost', '::1'].includes(config.host);
   if (!config.controlKey && !isLoopback) {

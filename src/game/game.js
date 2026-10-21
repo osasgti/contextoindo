@@ -6,8 +6,7 @@
 import { EventEmitter } from 'node:events';
 import { buildTiers, pickSecret } from '../secrets.js';
 import { parseCommand, parseGuess } from './guess.js';
-import { letterEntry } from './letters.js';
-import { closeness } from './vectors.js';
+import { closeness } from './closeness.js';
 import { helperPoints, winPoints } from './points.js';
 
 export const PHASE = { IDLE: 'idle', PLAYING: 'playing', BREAK: 'break' };
@@ -30,12 +29,10 @@ export const RULES = {
   hotCooldownMs: 25000,
   hotHoldMs: 6000, // how long the overlay stays in its hot state
   // close call: first near-miss of a round
-  closeRank: 3, // meaning mode: rank 2 or 3
-  closeWarmth: 0.8, // letter mode: 80% of the letters shared
+  closeRank: 3, // close call: rank 2 or 3
 };
 
 export const REPLY_NOT_IN_KBBI = { id: 'Kata tidak ada dalam KBBI.', en: 'That word is not in KBBI.' };
-export const REPLY_WRONG_LENGTH = (n) => ({ id: `Kata harus ${n} huruf.`, en: `The word must be ${n} letters.` });
 
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 
@@ -45,7 +42,7 @@ export class Game extends EventEmitter {
    * @param {{has(w:string):boolean, wordClass(w:string):string|null}} o.dict valid guesses (KBBI)
    * @param {string[]} o.secrets secret answers
    * @param {import('./vectors.js').VectorSpace|null} [o.vectors]
-   * @param {object} [o.settings] live settings object (cooldownMs, hintGift, mode, lang)
+   * @param {object} [o.settings] live settings object (cooldownMs, hintGift, lang)
    * @param {object} [o.scores] all-time store with add(user, points, info)
    * @param {{easy:string[], normal:string[], hard:string[]}} [o.tiers] word pools per difficulty
    * @param {string} [o.streamer] the streamer's TikTok handle (their own winning guess is ignored)
@@ -106,29 +103,6 @@ export class Game extends EventEmitter {
     return this.settings.hintGift || 'Rose';
   }
 
-  /** The mode in use: vector mode needs a loaded vector file. */
-  get mode() {
-    return this.settings.mode === 'vector' && this.vectors ? 'vector' : 'letters';
-  }
-
-  /** Switch mode; a running round is re-scored so the board stays consistent. */
-  setMode(mode) {
-    this.settings.mode = mode === 'vector' ? 'vector' : 'letters';
-    const r = this.round;
-    if (r && this.mode !== r.mode) {
-      r.mode = this.mode;
-      r.ranker = r.mode === 'vector' ? this.vectors.ranker(r.secret) : null;
-      r.best = new Map();
-      for (const e of r.guesses) {
-        Object.assign(e, { letters: undefined, warmth: undefined, shared: undefined, greens: undefined, rank: undefined, closeness: undefined, outOfRange: undefined });
-        Object.assign(e, this._score(e.word, r));
-        this._trackBest(r, e);
-      }
-      this._changed();
-    }
-    return this.mode;
-  }
-
   // ------------------------------------------------------------------ rounds
   /** Set the next secret (streamer override). Must be a KBBI word. */
   setNextWord(word) {
@@ -147,17 +121,15 @@ export class Game extends EventEmitter {
     const t = this.now();
     let secret = this.nextOverride;
     this.nextOverride = null;
-    if (!secret) secret = pickSecret(this.pool, this.prevSecret, this.rng);
-    const mode = this.mode;
+    if (!secret) secret = this._pickPlayable();
     const r = {
       no: ++this.roundNo,
       secret,
       chars: [...secret],
       wordClass: this.dict.wordClass(secret),
       startedAt: t,
-      mode,
       difficulty: this.difficulty,
-      ranker: mode === 'vector' ? this.vectors.ranker(secret) : null,
+      ranker: this.vectors ? this.vectors.ranker(secret) : null,
       revealed: new Map(), // index -> 'gift' | 'free' | 'first' | 'end'
       hintLog: [], // letters in the order they were opened (for the recap)
       firstLetterShown: false,
@@ -165,7 +137,7 @@ export class Game extends EventEmitter {
       closeCalled: false,
       guesses: [],
       byWord: new Map(),
-      best: new Map(), // userId -> best entry (vector mode helper points)
+      best: new Map(), // userId -> best entry (helper points)
       giftsBy: new Map(), // viewer id -> hint gifts used this round
       giftCount: 0,
       newestId: null,
@@ -178,9 +150,30 @@ export class Game extends EventEmitter {
     this.lastGuessAt.clear();
     this.recentGuessAt = [];
     this.lastHotAt = null;
-    this._evt('round', { no: r.no, length: r.chars.length, wordClass: r.wordClass, mode, startedAt: t });
+    this._evt('round', { no: r.no, length: r.chars.length, wordClass: r.wordClass, startedAt: t });
     this._changed();
     return r;
+  }
+
+  /**
+   * A random secret from the pool. With vectors loaded, a word without a vector is skipped (and
+   * logged), so every round can be ranked. With no vectors at all, the round still starts: every
+   * guess is then out of range.
+   */
+  _pickPlayable() {
+    if (!this.vectors) return pickSecret(this.pool, this.prevSecret, this.rng);
+    const skipped = new Set();
+    for (let k = 0; k < 50 && skipped.size < this.pool.length; k++) {
+      const w = pickSecret(this.pool, this.prevSecret, this.rng);
+      if (this.vectors.has(w)) return w;
+      if (!skipped.has(w)) {
+        skipped.add(w);
+        this.emit('note', { text: `Kata rahasia "${w}" tidak punya vektor, dilewati.` });
+      }
+    }
+    const fallback = pickSecret(this.pool, this.prevSecret, this.rng);
+    this.emit('note', { text: `Tidak ada kata rahasia yang punya vektor. Ronde memakai "${fallback}" dan semua tebakan di luar jangkauan.` });
+    return fallback;
   }
 
   /** Streamer: drop the current word and start a new round straight away. */
@@ -231,7 +224,7 @@ export class Game extends EventEmitter {
       guessCount: r.guesses.length,
       players: new Set(r.guesses.map((g) => g.user.id)).size,
       runnerUp: runner
-        ? { user: runner.user, word: runner.word, rank: runner.rank ?? null, warmth: runner.warmth ?? null, closeness: runner.closeness ?? null, outOfRange: !!runner.outOfRange }
+        ? { user: runner.user, word: runner.word, rank: runner.rank ?? null, closeness: runner.closeness ?? null, outOfRange: !!runner.outOfRange }
         : null,
       firstHint: first ? { index: first.index, letter: first.letter, how: first.how, user: first.user ?? null } : null,
     };
@@ -288,12 +281,6 @@ export class Game extends EventEmitter {
     if (!word) return 'ignored';
     if (this.frozen) return 'frozen';
     if (this.phase !== PHASE.PLAYING) return 'not-playing';
-    // letter mode: the board has one tile per letter of the answer, so only words of that length count
-    if (this.round.mode !== 'vector' && [...word].length !== this.round.chars.length) {
-      const lang = this.settings.lang === 'en' ? 'en' : 'id';
-      this.emit('reply', { user, text: REPLY_WRONG_LENGTH(this.round.chars.length)[lang], word });
-      return 'wrong-length';
-    }
     const t = this.now();
     const last = this.lastGuessAt.get(user.id);
     if (last != null && t - last < this.cooldownMs) return 'cooldown';
@@ -333,11 +320,11 @@ export class Game extends EventEmitter {
   /** The first near-miss of a round gets its own moment (once per round). */
   _checkClose(r, entry) {
     if (r.closeCalled) return;
-    const near = r.mode === 'vector' ? entry.rank != null && entry.rank <= this.rules.closeRank : (entry.warmth ?? 0) >= this.rules.closeWarmth;
+    const near = entry.rank != null && entry.rank > 1 && entry.rank <= this.rules.closeRank;
     if (!near) return;
     r.closeCalled = true;
-    const { id, word, user, rank, warmth, closeness: close } = entry;
-    this._evt('close', { entry: { id, word, user, rank: rank ?? null, warmth: warmth ?? null, closeness: close ?? null }, mode: r.mode });
+    const { id, word, user, rank, closeness: close } = entry;
+    this._evt('close', { entry: { id, word, user, rank: rank ?? null, closeness: close ?? null } });
   }
 
   /** Many guesses in a short window start a "hot streak" (at most one per cooldown). */
@@ -429,11 +416,8 @@ export class Game extends EventEmitter {
   }
 
   _score(word, r) {
-    if (r.mode === 'vector') {
-      const rank = r.ranker ? r.ranker.rankOf(word) : word === r.secret ? 1 : null;
-      return { rank, closeness: closeness(rank, r.ranker?.size ?? 1), outOfRange: rank == null };
-    }
-    return letterEntry(word, r.secret);
+    const rank = r.ranker ? r.ranker.rankOf(word) : word === r.secret ? 1 : null;
+    return { rank, closeness: closeness(rank, r.ranker?.size ?? 1), outOfRange: rank == null };
   }
 
   _trackBest(r, e) {
@@ -450,16 +434,14 @@ export class Game extends EventEmitter {
     const points = winPoints({ elapsedMs, streak: this.streak.count });
     this._award(user, points.total, { win: true });
     const helpers = [];
-    if (r.mode === 'vector') {
-      for (const [uid, best] of r.best) {
-        if (uid === user.id) continue;
-        const p = helperPoints(best.rank);
-        if (!p) continue;
-        helpers.push({ user: best.user, rank: best.rank, word: best.word, points: p });
-      }
-      helpers.sort((a, b) => a.rank - b.rank);
-      for (const h of helpers) this._award(h.user, h.points, { helper: true });
+    for (const [uid, best] of r.best) {
+      if (uid === user.id) continue;
+      const p = helperPoints(best.rank);
+      if (!p) continue;
+      helpers.push({ user: best.user, rank: best.rank, word: best.word, points: p });
     }
+    helpers.sort((a, b) => a.rank - b.rank);
+    for (const h of helpers) this._award(h.user, h.points, { helper: true });
     const winner = publicUser(user);
     this._end('win', { winner, points, helpers, elapsedMs, streak: this.streak.count });
     this._evt('win', { no: r.no, word: r.secret, winner, points, helpers, elapsedMs, streak: this.streak.count, recap: r.result.recap });
@@ -543,16 +525,10 @@ export class Game extends EventEmitter {
   }
 
   // ------------------------------------------------------------------ boards
-  /** Best first. Letters: warmth, then greens. Vector: rank, no-vector guesses last. Ties: earlier guess. */
+  /** Best first: rank, then the earlier guess. Out-of-range guesses go last, in the order they came. */
   sortedGuesses(r = this.round) {
     if (!r) return [];
-    const list = r.guesses.slice();
-    if (r.mode === 'vector') {
-      list.sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity) || a.at - b.at || a.id - b.id);
-    } else {
-      list.sort((a, b) => b.warmth - a.warmth || b.greens - a.greens || a.at - b.at || a.id - b.id);
-    }
-    return list;
+    return r.guesses.slice().sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity) || a.at - b.at || a.id - b.id);
   }
 
   /** Session board: points, ties to whoever reached the total first. */
@@ -581,7 +557,7 @@ export class Game extends EventEmitter {
 
   // ------------------------------------------------------------------ state
   publicState() {
-    // panic hides the round completely (letters, board, result); the overlay shows a cover
+    // panic hides the round completely (answer, board, result); the overlay shows a cover
     const r = this.frozen ? null : this.round;
     let round = null;
     if (r) {
@@ -590,7 +566,6 @@ export class Game extends EventEmitter {
       const best = sorted[0] || null;
       round = {
         no: r.no,
-        mode: r.mode,
         length: r.chars.length,
         wordClass: r.wordClass,
         startedAt: r.startedAt,
@@ -607,7 +582,7 @@ export class Game extends EventEmitter {
         guessCount: r.guesses.length,
         lastWord: newest?.word ?? null,
         newest,
-        heat: best ? (r.mode === 'vector' ? best.closeness : best.warmth) : 0,
+        heat: best ? best.closeness : 0,
         board: sorted.slice(0, this.rules.boardSize),
         vocabSize: r.ranker?.size ?? null,
         ended: r.ended,
@@ -618,7 +593,6 @@ export class Game extends EventEmitter {
       phase: this.phase,
       panic: this.frozen,
       roundNo: this.roundNo,
-      mode: this.mode,
       breakEndsAt: this.phase === PHASE.BREAK ? this.breakEndsAt : null,
       round,
       leaderboard: this.leaderboard(10),

@@ -8,7 +8,6 @@ export const DEFAULT_SETTINGS = {
   lang: 'id',
   dark: true,
   cooldownMs: 2000,
-  mode: 'letters',
   layout: 'landscape',
   sound: true,
   musicVol: 0.25,
@@ -56,9 +55,6 @@ export function sanitize(patch, base = DEFAULT_SETTINGS) {
         break;
       case 'lang':
         out.lang = v === 'en' ? 'en' : 'id';
-        break;
-      case 'mode':
-        out.mode = v === 'vector' ? 'vector' : 'letters';
         break;
       case 'layout':
         out.layout = v === 'portrait' ? 'portrait' : 'landscape';

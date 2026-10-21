@@ -106,18 +106,18 @@ test('duplicates: a word already on the board is ignored', () => {
   assert.equal(game.round.guesses.length, 1);
 });
 
-test('letter-hint board is best first and marks the newest guess', () => {
-  const { game, of } = makeGame();
+test('the board is best first (rank) and marks the newest guess', () => {
+  const { game, of } = vectorGame();
   game.startRound();
-  game.handleChat(u('a'), 'pelita');
-  game.handleChat(u('b'), 'sungai');
-  game.handleChat(u('c'), 'rumput');
+  game.handleChat(u('a'), 'laut');
+  game.handleChat(u('b'), 'gedung');
+  game.handleChat(u('c'), 'rumah');
   const st = game.publicState();
-  assert.deepEqual(st.round.board.map((e) => e.word), ['sungai', 'pelita', 'rumput'], 'warmth first');
-  assert.equal(st.round.newest.word, 'rumput');
-  assert.equal(st.round.lastWord, 'rumput');
+  assert.deepEqual(st.round.board.map((e) => e.word), ['rumah', 'gedung', 'laut']);
+  assert.equal(st.round.newest.word, 'rumah');
+  assert.equal(st.round.lastWord, 'rumah');
   assert.equal(st.round.guessCount, 3);
-  assert.deepEqual(st.round.board[0].letters, ['x', 'x', 'g', 'g', 'y', 'x']);
+  assert.equal(st.round.heat, st.round.board[0].closeness, 'the heat follows the closest guess');
   assert.ok(of('guess')[0].first);
   assert.ok(!of('guess')[1].first);
 });
@@ -263,10 +263,9 @@ function vectorGame(opts = {}) {
   return makeGame({ vectors, settings: { mode: 'vector' }, ...opts });
 }
 
-test('vector mode: rank by cosine, "di luar jangkauan" for words without a vector', () => {
+test('ranking: rank by cosine, "di luar jangkauan" for words without a vector', () => {
   const { game } = vectorGame();
   game.startRound();
-  assert.equal(game.mode, 'vector');
   game.handleChat(u('a'), 'laut');
   game.handleChat(u('b'), 'rumah');
   game.handleChat(u('c'), 'kopi'); // valid KBBI word, no vector
@@ -276,51 +275,18 @@ test('vector mode: rank by cosine, "di luar jangkauan" for words without a vecto
   assert.equal(game.round.guesses.length, 3, 'still counts as a guess');
 });
 
-test('vector mode falls back to letters when no vectors are loaded', () => {
-  const { game } = makeGame({ settings: { mode: 'vector' } });
+test('no vectors: the round still runs, every guess is out of range, and the streamer sees a note', () => {
+  const { game } = makeGame();
+  const notes = [];
+  game.on('note', (n) => notes.push(n.text));
   game.startRound();
-  assert.equal(game.mode, 'letters');
+  assert.equal(game.round.ranker, null);
   game.handleChat(u('a'), 'gedung');
-  assert.ok(Array.isArray(game.round.guesses[0].letters));
-});
-
-test('helper points: best guess only, top 10, once per round, not for the winner', () => {
-  const { game, advance, of } = vectorGame();
-  game.startRound();
-  game.handleChat(u('h1'), 'rumah'); // rank 2 -> 10
-  game.handleChat(u('h2'), 'gedung'); // rank 4 -> 5
-  advance(2000);
-  game.handleChat(u('h2'), 'atap'); // rank 3 now best -> 10 (not 10 + 5)
-  game.handleChat(u('w'), 'pintu'); // the winner's own good guess earns nothing extra
-  game.handleChat(u('far'), 'laut'); // rank 7 -> 5
-  advance(2000);
-  game.handleChat(u('w'), 'tangga');
-  const win = of('win')[0];
-  assert.deepEqual(win.helpers.map((h) => [h.user.id, h.rank, h.points]), [['h1', 2, 10], ['h2', 3, 10], ['far', 7, 5]]);
-  const lb = Object.fromEntries(game.leaderboard().map((s) => [s.id, s.points]));
-  assert.equal(lb.h1, 10);
-  assert.equal(lb.h2, 10);
-  assert.equal(lb.far, 5);
-  assert.equal(lb.w, win.points.total, 'winner gets only the win points');
-});
-
-test('no helper points in letter-hint mode', () => {
-  const { game, of } = makeGame();
-  game.startRound();
-  game.handleChat(u('h'), 'ganti');
-  game.handleChat(u('w'), 'tangga');
-  assert.deepEqual(of('win')[0].helpers, []);
-  assert.equal(game.leaderboard().length, 1);
-});
-
-test('switching mode mid-round re-scores the board', () => {
-  const { game } = vectorGame({ settings: { mode: 'letters' } });
-  game.startRound();
-  game.handleChat(u('a'), 'gedung');
-  assert.ok(game.round.guesses[0].letters);
-  game.setMode('vector');
-  assert.equal(game.round.guesses[0].rank, 4, 'tangga, rumah, atap, then gedung');
-  assert.equal(game.round.guesses[0].letters, undefined);
+  const e = game.round.guesses[0];
+  assert.equal(e.rank, null);
+  assert.equal(e.outOfRange, true);
+  assert.equal(e.closeness, 0);
+  assert.deepEqual(notes, [], 'no note for a plain no-vectors run; the status line says so');
 });
 
 test('session board ties go to whoever reached the total first', () => {

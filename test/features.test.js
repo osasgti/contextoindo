@@ -170,22 +170,7 @@ test('slow guessing never counts as a hot streak', () => {
 });
 
 // ------------------------------------------------------------------ close call
-test('close call (letters): the first guess sharing 80% of the letters, once per round', () => {
-  const { game, of } = makeGame();
-  game.startRound();
-  game.handleChat(u('a'), 'kopi');
-  assert.equal(of('close').length, 0, 'a far guess is not a close call');
-  game.handleChat(u('b'), 'tangan'); // t,a,n,g,a,n vs tangga: 5 of 6 letters shared
-  const close = of('close');
-  assert.equal(close.length, 1);
-  assert.equal(close[0].entry.user.id, 'b');
-  assert.equal(close[0].entry.word, 'tangan');
-  game.handleChat(u('c'), 'tanah');
-  game.handleChat(u('d'), 'ganti');
-  assert.equal(of('close').length, 1, 'only the first one per round');
-});
-
-test('close call (meaning): rank 2 or 3, never the answer itself', () => {
+test('close call: rank 2 or 3, never the answer itself, once per round', () => {
   const vectors = VectorSpace.fromObject({
     tangga: [1, 0, 0],
     rumah: [0.95, 0.05, 0],
@@ -195,7 +180,7 @@ test('close call (meaning): rank 2 or 3, never the answer itself', () => {
     kota: [0.5, 0.5, 0.5],
     laut: [0, 1, 0],
   });
-  const { game, of } = makeGame({ vectors, settings: { mode: 'vector' } });
+  const { game, of } = makeGame({ vectors });
   game.startRound();
   game.handleChat(u('a'), 'laut');
   game.handleChat(u('b'), 'gedung'); // rank 4
@@ -211,7 +196,13 @@ test('close call (meaning): rank 2 or 3, never the answer itself', () => {
 
 // ------------------------------------------------------------------ recap
 test('the win event carries a recap: meaning, counts, runner-up and the first hint', () => {
-  const { game, advance, of } = makeGame();
+  const vectors = VectorSpace.fromObject({
+    tangga: [1, 0, 0],
+    tangan: [0.9, 0.3, 0],
+    sungai: [0, 1, 0],
+    gedung: [0.7, 0.7, 0],
+  });
+  const { game, advance, of } = makeGame({ vectors });
   game.startRound();
   game.handleChat(u('a'), 'sungai');
   game.handleChat(u('b'), 'tangan');
@@ -325,16 +316,14 @@ test('gift hints: a viewer limit below the round total still applies', () => {
   assert.equal(game.handleGift(u('b'), 'Rose'), 'hint');
 });
 
-test('letter mode: only guesses as long as the answer count', () => {
-  const { game, of } = makeGame({ secrets: ['tangga'] });
-  const replies = [];
-  game.on('reply', (r) => replies.push(r.text));
+test('any length is accepted: the ranking, not the length, decides', () => {
+  const vectors = VectorSpace.fromObject({ tangga: [1, 0, 0], tangan: [0.9, 0.3, 0] });
+  const { game, of } = makeGame({ vectors });
   game.startRound();
-  assert.equal(game.handleChat(u('a'), 'kopi'), 'wrong-length', 'a 4-letter word on a 6-letter board');
-  assert.deepEqual(replies, ['Kata harus 6 huruf.']);
-  assert.equal(game.handleChat(u('a'), 'tangan'), 'guess');
-  assert.equal(game.handleChat(u('b'), 'tangga'), 'win', 'the answer itself is 6 letters');
-  assert.deepEqual(of('guess').map((e) => e.entry.word), ['tangan', 'tangga'], 'a rejected word never reaches the board');
+  assert.equal(game.handleChat(u('a'), 'kopi'), 'guess', 'a 4-letter word with no vector');
+  assert.equal(game.handleChat(u('b'), 'tangan'), 'guess', 'a 6-letter word with a vector');
+  assert.deepEqual(of('guess').map((e) => e.entry.word), ['kopi', 'tangan']);
+  assert.equal(of('guess')[0].entry.outOfRange, true);
 });
 
 // ------------------------------------------------------------------ panic

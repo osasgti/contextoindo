@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isJoinCommand, parseGuess } from '../src/game/guess.js';
-import { letterEntry, scoreLetters, sharedLetters, warmth } from '../src/game/letters.js';
 import { closeness, loadVectors, VectorSpace } from '../src/game/vectors.js';
 import { helperPoints, speedBonus, streakBonus, winPoints } from '../src/game/points.js';
 
@@ -30,33 +29,6 @@ test('!main is the join command, not a guess', () => {
   assert.ok(isJoinCommand('  !MAIN '));
   assert.ok(!isJoinCommand('main'));
   assert.ok(!isJoinCommand('!main yuk'));
-});
-
-test('letter colours: green right spot, yellow elsewhere, gray absent', () => {
-  assert.deepEqual(scoreLetters('tangga', 'tangga'), ['g', 'g', 'g', 'g', 'g', 'g']);
-  assert.deepEqual(scoreLetters('rumah', 'murah'), ['y', 'g', 'y', 'g', 'g']);
-  assert.deepEqual(scoreLetters('kopi', 'lampu'), ['x', 'x', 'y', 'x']);
-  assert.deepEqual(scoreLetters('lampau', 'lampu'), ['g', 'g', 'g', 'g', 'x', 'y']);
-});
-
-test('letter colours respect repeated letters', () => {
-  // secret has one "a": only one "a" in the guess may light up
-  assert.deepEqual(scoreLetters('aaa', 'bab'), ['x', 'g', 'x']);
-  assert.deepEqual(scoreLetters('anak', 'kuda'), ['y', 'x', 'x', 'y']);
-  // guess longer or shorter than the secret
-  assert.deepEqual(scoreLetters('tanggal', 'tangga'), ['g', 'g', 'g', 'g', 'g', 'g', 'x']);
-  assert.deepEqual(scoreLetters('tan', 'tangga'), ['g', 'g', 'g']);
-});
-
-test('warmth comes from shared letters; only the secret is 1', () => {
-  assert.equal(sharedLetters('anak', 'kuda'), 2);
-  assert.equal(warmth('tangga', 'tangga'), 1);
-  assert.equal(warmth('xyz', 'tangga'), 0);
-  assert.ok(warmth('ganti', 'tangga') > warmth('kopi', 'tangga'));
-  assert.ok(warmth('murah', 'rumah') < 1, 'an anagram is hot but not the answer');
-  const e = letterEntry('rumah', 'murah');
-  assert.equal(e.greens, 3);
-  assert.equal(e.shared, 5);
 });
 
 test('cosine ranking on a small fixture: the secret is rank 1', async () => {

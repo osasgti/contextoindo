@@ -2,7 +2,6 @@
 // Every simulated user is marked sim: true, so nothing they score reaches the all-time board.
 // It peeks at the secret only to make its guesses look like a real chat getting warmer.
 import { ChatSource } from './source.js';
-import { letterEntry } from '../game/letters.js';
 
 const NAMES = [
   'nadia.kw', 'budi_santoso', 'raka99', 'sitisaraa', 'dimas.art', 'putri.ayu', 'agus_pratama', 'rina.mlg',
@@ -59,7 +58,7 @@ export class SimSource extends ChatSource {
     const sample = Array.from({ length: 30 }, () => this.words[Math.floor(this.rng() * this.words.length)]).filter((w) => w !== secret);
     if (!sample.length) return secret;
     if (this.rng() < 0.4) {
-      const score = (w) => (round.mode === 'vector' && round.ranker ? -(round.ranker.rankOf(w) ?? 1e9) : letterEntry(w, secret).warmth);
+      const score = (w) => -(round.ranker?.rankOf(w) ?? 1e9); // closer (lower rank) is better
       return sample.reduce((a, b) => (score(b) > score(a) ? b : a));
     }
     return sample[0];
