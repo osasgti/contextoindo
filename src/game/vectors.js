@@ -1,6 +1,7 @@
 // Vector mode: rank every known word by cosine similarity to the secret (1 = the secret).
 import { createReadStream, existsSync } from 'node:fs';
 import { createInterface } from 'node:readline';
+import { competitionRanks } from './ranker.js';
 
 const WORD = /^[a-z]+(?:-[a-z]+)*$/;
 
@@ -36,7 +37,7 @@ export class VectorSpace {
     return s;
   }
 
-  /** Rank table for one secret. Returns null when the secret has no vector. */
+  /** Rank table for one secret (competition ranks, see ranker.js). Null when the secret has no vector. */
   ranker(secret) {
     const si = this.index.get(secret);
     if (si == null) return null;
@@ -48,10 +49,7 @@ export class VectorSpace {
       for (let k = 0; k < d; k++) s += this.data[i * d + k] * this.data[si * d + k];
       sims[i] = s;
     }
-    sims[si] = Infinity; // the secret is always rank 1, even with duplicate vectors
-    const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => sims[b] - sims[a]);
-    const ranks = new Int32Array(n);
-    order.forEach((idx, r) => (ranks[idx] = r + 1));
+    const ranks = competitionRanks(sims, si);
     return {
       size: n,
       rankOf: (word) => {
@@ -70,12 +68,7 @@ export class VectorSpace {
   }
 }
 
-/** 0..1 bar fill from a rank, on a log scale (rank 1 = full). */
-export function closeness(rank, size) {
-  if (rank == null) return 0;
-  if (rank <= 1) return 1;
-  return Math.max(0, Math.min(0.99, 1 - Math.log(rank) / Math.log(Math.max(size, 2))));
-}
+export { closeness } from './closeness.js';
 
 /**
  * Load a word2vec text file (first line "count dim", then "word v1 v2 ...").
