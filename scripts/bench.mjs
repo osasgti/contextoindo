@@ -10,13 +10,45 @@
 //  Optional: BENCH_URL=http://localhost:3000 (a server that is already running with --sim or --demo)
 //            CHROME_PATH=/path/to/chrome
 import { Game } from '../src/game/game.js';
+import { VectorSpace } from '../src/game/vectors.js';
 
-const WORDS = ['tangga', 'rumah', 'lampu', 'gedung', 'atap', 'ganti', 'tanah', 'kopi', 'pintu', 'kota', 'laut', 'jalan', 'hujan', 'murah', 'tangan', 'kursi', 'meja', 'buku', 'pena', 'kain'];
+// A synthetic vocabulary: N words of 50 random dimensions, enough to time the ranking
+// the way a real vector file would cost it (the real file's ranks are not checked here).
+const N = Number(process.env.BENCH_VOCAB) || 50000;
+const DIM = 50;
+let seed = 12345;
+const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+const wordOf = (i) => {
+  let s = '';
+  let n = i + 1;
+  while (n > 0) {
+    s = String.fromCharCode(97 + (n % 26)) + s;
+    n = Math.floor(n / 26);
+  }
+  return s;
+};
+const words = Array.from({ length: N }, (_, i) => wordOf(i));
+const data = new Float32Array(N * DIM);
+for (let i = 0; i < data.length; i++) data[i] = rnd() * 2 - 1;
+const vectors = new VectorSpace(words, DIM, data);
+
+// per round start: the rank table for one secret
+const secret = words[1000];
+const buildTimes = [];
+for (let k = 0; k < 15; k++) {
+  const t = performance.now();
+  vectors.ranker(words[1000 + k]);
+  buildTimes.push(performance.now() - t);
+}
+buildTimes.sort((a, b) => a - b);
+console.log(`ranking: rank table for ${N.toLocaleString()} words x ${DIM} dims, median ${buildTimes[7].toFixed(1)} ms per round start`);
+
 let clock = 1_000_000;
 const game = new Game({
   dict: { has: (w) => /^[a-z]+$/.test(w), wordClass: () => 'Nomina', meaning: () => 'contoh' },
-  secrets: ['tangga'],
-  settings: { cooldownMs: 0, mode: 'letters', hintGift: 'Rose' },
+  secrets: [secret],
+  vectors,
+  settings: { cooldownMs: 0, hintGift: 'Rose' },
   now: () => clock,
   rng: () => 0.5,
 });
@@ -24,15 +56,16 @@ let events = 0;
 game.on('evt', () => events++);
 game.startRound();
 
-const N = 20000;
+const GUESSES = 20000;
+const guessWords = Array.from({ length: 400 }, (_, i) => words[(i * 7919) % N]);
 const t0 = performance.now();
-for (let i = 0; i < N; i++) {
+for (let i = 0; i < GUESSES; i++) {
   clock += 3; // 333 guesses per second of game time
-  game.handleChat({ id: `u${i % 400}`, name: `Viewer ${i % 400}` }, `${WORDS[i % WORDS.length]}${(i % 700).toString(26).replace(/[0-9]/g, (d) => 'qrstuvwxyz'[d])}`);
+  game.handleChat({ id: `u${i % 400}`, name: `Viewer ${i % 400}` }, guessWords[i % guessWords.length]);
   if (i % 80 === 0) game.tick();
 }
 const ms = performance.now() - t0;
-console.log(`server: ${N} guesses from 400 viewers in ${ms.toFixed(0)} ms (${((ms * 1000) / N).toFixed(1)} µs each, ${events} events)`);
+console.log(`server: ${GUESSES} ranked guesses from 400 viewers in ${ms.toFixed(0)} ms (${((ms * 1000) / GUESSES).toFixed(2)} µs each, ${events} events)`);
 
 // ---- overlay in a headless browser, when Playwright is around
 const url = process.env.BENCH_URL;

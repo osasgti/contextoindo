@@ -1,7 +1,7 @@
 {
   "name": "contextoindo",
   "version": "1.0.0",
-  "description": "Wordle Indo: an Indonesian word-guessing game for TikTok LIVE, with letter hints and Contexto-style meaning closeness.",
+  "description": "Contexto Indo: an Indonesian meaning-ranking word game for TikTok LIVE. Guesses are ranked by closeness to the secret word.",
   "type": "module",
   "private": true,
   "engines": {
