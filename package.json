@@ -1,0 +1,23 @@
+{
+  "name": "contextoindo",
+  "version": "1.0.0",
+  "description": "Wordle Indo: an Indonesian word-guessing game for TikTok LIVE, with letter hints and Contexto-style meaning closeness.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "sim": "node src/server.js --sim",
+    "test-mode": "node src/server.js --sim",
+    "demo": "node src/server.js --demo",
+    "test": "node --test \"test/*.test.js\"",
+    "build-secrets": "python scripts/build_secret_words.py",
+    "bench": "node scripts/bench.mjs",
+    "contrast": "node scripts/contrast.mjs"
+  },
+  "optionalDependencies": {
+    "@streamchime/tiktok-live-sdk": "*"
+  }
+}

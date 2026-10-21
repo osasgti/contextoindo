@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="id" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Wordle Indo · Kontrol</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/control.css">
+</head>
+<body>
+  <header class="head">
+    <div class="head-brand">
+      <span class="logo">Wordle <b>Indo</b></span>
+      <span class="head-title" data-t="controlTitle">Kontrol streamer</span>
+    </div>
+    <div class="head-status">
+      <span class="pill" id="pillLive"><span class="dot"></span><span id="liveText">–</span></span>
+      <span class="pill" id="pillOverlay"><span class="dot"></span><span id="overlayText">–</span></span>
+      <button class="pill pill-btn" id="audioUnlock" hidden><span class="dot"></span><span data-t="clickForSound">Klik untuk suara</span></button>
+    </div>
+  </header>
+
+  <p class="obs-warn" data-t="warnObs">Halaman ini menampilkan jawaban. Jangan tambahkan ke OBS dan jangan bagikan layarnya.</p>
+
+  <section class="panic-bar" id="panicBar">
+    <div>
+      <div class="panic-bar-t" id="panicTitle" data-t="panicIdle">Tombol panik</div>
+      <div class="panic-bar-s" id="panicNote" data-t="panicNote">Hentikan suara, bekukan ronde, dan sembunyikan jawaban di semua layar.</div>
+    </div>
+    <button class="btn danger big" id="panicBtn" type="button" data-t="panicOn">PANIK</button>
+  </section>
+
+  <main class="grid">
+    <!-- round -->
+    <section class="card card-round">
+      <div class="card-head">
+        <h2 data-t="round">Ronde</h2>
+        <span class="phase" id="phase">–</span>
+      </div>
+      <div class="secret-box">
+        <div class="secret-label"><span data-t="answer">Jawaban</span> <button class="link" id="toggleSecret" data-t="hide">Sembunyikan</button></div>
+        <div class="secret" id="secret">–</div>
+        <div class="secret-meta" id="secretMeta"></div>
+      </div>
+      <div class="stats">
+        <div><span class="stat-k" data-t="timer">Waktu</span><span class="stat-v num" id="cTimer">–</span></div>
+        <div><span class="stat-k" data-t="guesses">Tebakan</span><span class="stat-v num" id="cGuesses">0</span></div>
+        <div><span class="stat-k" data-t="giftHints">Hint gift</span><span class="stat-v num" id="cGifts">0/3</span></div>
+        <div><span class="stat-k" data-t="closest">Terdekat</span><span class="stat-v" id="cBest">–</span></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" data-action="start" data-t="start">Mulai ronde</button>
+        <button class="btn" data-action="skip" data-t="skip">Lewati kata</button>
+        <button class="btn" data-action="reveal" data-t="reveal">Buka jawaban</button>
+      </div>
+      <form class="inline-form" id="nextForm" autocomplete="off">
+        <label for="nextWord" data-t="nextWord">Kata berikutnya</label>
+        <div class="field-row">
+          <input id="nextWord" type="text" spellcheck="false" maxlength="30" data-tp="nextWordPh" placeholder="acak dari daftar">
+          <button class="btn" type="submit" data-t="set">Atur</button>
+          <button class="btn ghost" type="button" id="nextClear" data-t="random">Acak</button>
+        </div>
+        <p class="hint" id="nextInfo"></p>
+      </form>
+    </section>
+
+    <!-- controls -->
+    <section class="card">
+      <div class="card-head"><h2 data-t="controls">Kendali</h2></div>
+      <div class="rows">
+        <div class="ctl">
+          <div><div class="ctl-t" data-t="simulator">Simulator</div><div class="ctl-s" id="simNote" data-t="simNote">Penonton palsu untuk mencoba. Mati otomatis saat LIVE.</div></div>
+          <button class="switch" id="swSim" role="switch" aria-checked="false"><span></span></button>
+        </div>
+        <div class="ctl">
+          <div><div class="ctl-t" data-t="overlaySound">Suara overlay</div><div class="ctl-s" data-t="overlaySoundNote">Musik dan efek di OBS.</div></div>
+          <button class="switch" id="swSound" role="switch" aria-checked="true"><span></span></button>
+        </div>
+        <div class="ctl">
+          <div class="ctl-t" data-t="layout">Tata letak</div>
+          <div class="seg" id="segLayout">
+            <button data-v="landscape" data-t="landscape">Lanskap</button>
+            <button data-v="portrait" data-t="portrait">Potret</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <div><div class="ctl-t" data-t="mode">Mode</div><div class="ctl-s" id="modeNote"></div></div>
+          <div class="seg" id="segMode">
+            <button data-v="letters" data-t="modeLetters">Huruf</button>
+            <button data-v="vector" data-t="modeVector">Makna</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <div><div class="ctl-t" data-t="difficulty">Tingkat kesulitan</div><div class="ctl-s" id="diffNote"></div></div>
+          <div class="seg" id="segDiff">
+            <button data-v="easy" data-t="diffEasy">Mudah</button>
+            <button data-v="normal" data-t="diffNormal">Normal</button>
+            <button data-v="hard" data-t="diffHard">Sulit</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <div class="ctl-t" data-t="boardTop">Papan skor overlay</div>
+          <div class="seg" id="segTop">
+            <button data-v="5">Top 5</button>
+            <button data-v="10">Top 10</button>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" data-action="resetSession" data-t="resetSession">Reset sesi</button>
+        <button class="btn" data-action="clearBoard" data-t="clearBoard">Bersihkan papan skor</button>
+      </div>
+      <p class="hint" data-t="resetHint">Reset sesi menghapus poin dan rentetan menang sesi ini. Bersihkan papan skor hanya menghapus poin.</p>
+    </section>
+
+    <!-- settings -->
+    <section class="card">
+      <div class="card-head"><h2 data-t="settings">Pengaturan</h2></div>
+      <form class="rows" id="settingsForm" autocomplete="off">
+        <label class="ctl">
+          <div><div class="ctl-t" data-t="hintGift">Gift petunjuk</div><div class="ctl-s" data-t="hintGiftNote">Nama gift yang membuka 1 huruf.</div></div>
+          <input id="hintGift" type="text" maxlength="40" spellcheck="false" class="short">
+        </label>
+        <label class="ctl">
+          <div><div class="ctl-t" data-t="cooldown">Jeda tebakan</div><div class="ctl-s" data-t="cooldownNote">Detik antar tebakan per penonton.</div></div>
+          <input id="cooldown" type="number" min="0" max="30" step="0.5" class="short num">
+        </label>
+        <div class="ctl">
+          <div><div class="ctl-t" data-t="tts">Baca nama pemenang</div><div class="ctl-s" data-t="ttsNote">Suara browser membacakan pemenang dan katanya.</div></div>
+          <button class="switch" id="swTts" type="button" role="switch" aria-checked="false"><span></span></button>
+        </div>
+        <div class="ctl">
+          <div><div class="ctl-t" data-t="freeHint">Petunjuk gratis !hint</div><div class="ctl-s" data-t="freeHintNote">Satu huruf gratis per ronde, bersama untuk semua penonton.</div></div>
+          <button class="switch" id="swFreeHint" type="button" role="switch" aria-checked="true"><span></span></button>
+        </div>
+        <div class="ctl">
+          <div><div class="ctl-t" data-t="streamerWins">Tebakan benar streamer dihitung</div><div class="ctl-s" data-t="streamerWinsNote">Mati: tebakan akunmu sendiri tidak menang dan tidak memberi poin.</div></div>
+          <button class="switch" id="swStreamerWins" type="button" role="switch" aria-checked="false"><span></span></button>
+        </div>
+        <div class="ctl">
+          <div><div class="ctl-t" data-t="sceneSafe">Mode aman layar</div><div class="ctl-s" data-t="sceneSafeNote">Nama dan foto penonton diganti kode di overlay.</div></div>
+          <button class="switch" id="swSceneSafe" type="button" role="switch" aria-checked="false"><span></span></button>
+        </div>
+        <div class="ctl">
+          <div><div class="ctl-t" data-t="reduceFlash">Kurangi kilatan</div><div class="ctl-s" data-t="reduceFlashNote">Tanpa kedip, getar, dan konfeti padat. Terpisah dari pengurangan gerak.</div></div>
+          <button class="switch" id="swReduceFlash" type="button" role="switch" aria-checked="false"><span></span></button>
+        </div>
+        <div class="ctl">
+          <div class="ctl-t" data-t="language">Bahasa</div>
+          <div class="seg" id="segLang">
+            <button type="button" data-v="id">Indonesia</button>
+            <button type="button" data-v="en">English</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <div class="ctl-t" data-t="darkMode">Mode gelap</div>
+          <button class="switch" id="swDark" type="button" role="switch" aria-checked="true"><span></span></button>
+        </div>
+      </form>
+    </section>
+
+    <!-- sound -->
+    <section class="card">
+      <div class="card-head"><h2 data-t="sound">Suara</h2><span class="muted" id="overlayAudio"></span></div>
+      <div class="slider">
+        <label for="volMusic" data-t="music">Musik</label>
+        <input id="volMusic" type="range" min="0" max="1" step="0.01">
+        <span class="num" id="volMusicV">25%</span>
+        <button class="btn small" id="musicPreview" type="button" data-t="listen">Dengar</button>
+      </div>
+      <div class="slider">
+        <label for="volSfx" data-t="effects">Efek</label>
+        <input id="volSfx" type="range" min="0" max="1" step="0.01">
+        <span class="num" id="volSfxV">60%</span>
+        <span></span>
+      </div>
+      <p class="hint" data-t="previewHint">Pratinjau diputar di halaman ini, bukan di stream.</p>
+      <div class="previews" id="previews"></div>
+      <h3 class="sub-h" data-t="muteTitle">Matikan per suara</h3>
+      <p class="hint" data-t="muteHint">Tiap suara bisa dimatikan sendiri tanpa mengubah yang lain. Setiap suara punya tanda visual di overlay.</p>
+      <div class="mutes" id="mutes"></div>
+    </section>
+
+    <!-- health -->
+    <section class="card">
+      <div class="card-head"><h2 data-t="health">Kesehatan</h2><span class="muted" id="healthNote"></span></div>
+      <dl class="health" id="healthList"></dl>
+    </section>
+
+    <!-- session board -->
+    <section class="card">
+      <div class="card-head"><h2 data-t="sessionBoard">Papan skor sesi</h2></div>
+      <ol class="table" id="sessionList"></ol>
+      <p class="empty" id="sessionEmpty" data-t="noPoints">Belum ada poin di sesi ini.</p>
+    </section>
+
+    <!-- all-time board -->
+    <section class="card">
+      <div class="card-head"><h2 data-t="allTime">Sepanjang masa</h2><span class="muted" id="alltimeCount"></span></div>
+      <ol class="table" id="alltimeList"></ol>
+      <p class="empty" id="alltimeEmpty" data-t="noAllTime">Belum ada skor tersimpan. Pemain simulator tidak pernah masuk ke sini.</p>
+      <div class="btn-row">
+        <a class="btn" id="exportCsv" href="/api/alltime.csv" download data-t="exportCsv">Ekspor CSV</a>
+        <button class="btn danger" id="resetAll" type="button" data-t="resetAll">Reset sepanjang masa</button>
+      </div>
+      <form class="confirm" id="confirmReset" hidden autocomplete="off">
+        <p data-t="confirmText">Semua skor sepanjang masa akan dihapus. Ketik HAPUS untuk lanjut.</p>
+        <div class="field-row">
+          <input id="confirmInput" type="text" spellcheck="false" placeholder="HAPUS">
+          <button class="btn danger" type="submit" data-t="confirmReset">Hapus semua</button>
+          <button class="btn ghost" type="button" id="confirmCancel" data-t="cancel">Batal</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- activity -->
+    <section class="card card-log">
+      <div class="card-head"><h2 data-t="activity">Aktivitas</h2></div>
+      <ol class="log" id="log"></ol>
+    </section>
+
+    <!-- obs links -->
+    <section class="card">
+      <div class="card-head"><h2 data-t="obsLinks">Link OBS</h2></div>
+      <p class="hint" data-t="obsHint">Tambahkan sebagai Browser Source. Centang "Control audio via OBS".</p>
+      <div class="links" id="links"></div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" hidden></div>
+  <script type="module" src="js/control.js"></script>
+</body>
+</html>

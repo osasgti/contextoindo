@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wordle Indo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/overlay.css">
+</head>
+<body>
+  <div class="aura" aria-hidden="true">
+    <div class="aura-cold"></div>
+    <div class="aura-hot"></div>
+    <div class="aura-pulse" id="auraPulse"></div>
+  </div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <main class="stage" id="stage">
+    <header class="topbar glass">
+      <div class="brand" aria-label="Wordle Indo">
+        <span class="brand-a">Wordle</span><span class="brand-b">Indo</span>
+      </div>
+      <div class="top-zones">
+        <div class="zone">
+          <span class="zone-label" data-i18n="guesses">Tebakan</span>
+          <span class="zone-value num" id="guessCount">0</span>
+        </div>
+        <div class="zone zone-last">
+          <span class="zone-label" data-i18n="lastWord">Kata terakhir</span>
+          <span class="zone-value word" id="lastWord">–</span>
+        </div>
+        <div class="zone zone-timer" id="timerZone">
+          <span class="zone-label" id="timerLabel" data-i18n="timeLeft">Sisa waktu</span>
+          <span class="zone-value num" id="timer">6:00</span>
+        </div>
+      </div>
+      <div class="mode-badge" id="modeBadge">
+        <span class="mode-dot"></span><span id="modeText">Petunjuk huruf</span>
+      </div>
+    </header>
+
+    <section class="hero glass" id="hero">
+      <div class="hero-glow" aria-hidden="true"></div>
+      <div class="hero-head">
+        <span class="hero-title" id="heroTitle" data-i18n="secretWord">Kata rahasia</span>
+        <div class="chips">
+          <span class="chip" id="chipLength">– huruf</span>
+          <span class="chip" id="chipClass">–</span>
+          <span class="chip chip-diff" id="chipDiff" hidden></span>
+          <span class="chip chip-gift" id="chipGift"><span id="giftLabel">Rose</span><span class="pips" id="giftPips"></span></span>
+        </div>
+      </div>
+      <div class="slots" id="slots"></div>
+      <div class="track" id="track">
+        <div class="track-rail"><div class="track-fill" id="trackFill"></div></div>
+        <div class="track-mark track-mark-mid"><span class="track-dot"></span><span class="track-text" data-i18n="firstLetterMark">Huruf pertama</span></div>
+        <div class="track-mark track-mark-end"><span class="track-dot"></span><span class="track-text" data-i18n="answerMark">Jawaban</span></div>
+      </div>
+      <div class="break-note" id="breakNote"></div>
+    </section>
+
+    <section class="board glass" id="board">
+      <div class="panel-head">
+        <h2 data-i18n="boardTitle">Papan tebakan</h2>
+        <span class="panel-sub" id="boardSub" data-i18n="bestFirst">Terdekat di atas</span>
+      </div>
+      <div class="latest" id="latest"></div>
+      <ol class="rows" id="rows"></ol>
+      <div class="more" id="more"></div>
+      <div class="board-empty" id="boardEmpty"></div>
+    </section>
+
+    <aside class="side">
+      <section class="scores glass">
+        <div class="panel-head">
+          <h2 data-i18n="scoreTitle">Papan skor</h2>
+          <span class="panel-sub" data-i18n="thisSession">Sesi ini</span>
+        </div>
+        <ol class="leaders" id="leaders"></ol>
+        <div class="leaders-empty" id="leadersEmpty" data-i18n="noScores">Belum ada poin. Tebakan benar pertama dapat 100+ poin.</div>
+      </section>
+      <section class="history glass" id="historyCard">
+        <div class="panel-head">
+          <h2 data-i18n="historyTitle">Ronde sebelumnya</h2>
+        </div>
+        <ol class="history-list" id="history"></ol>
+        <div class="history-empty" id="historyEmpty" data-i18n="historyEmpty">Jawaban ronde yang selesai muncul di sini.</div>
+      </section>
+      <div class="dock" id="dock"></div>
+    </aside>
+
+    <footer class="howto glass" id="howto"></footer>
+
+    <div class="popup-layer" id="popupLayer" aria-live="polite"></div>
+    <div class="toast-layer" id="toastLayer"></div>
+  </main>
+
+  <canvas class="confetti" id="confetti" aria-hidden="true"></canvas>
+  <div class="hearts" id="hearts" aria-hidden="true"></div>
+  <div class="conn" id="conn" hidden></div>
+  <div class="panic" id="panic" role="status">
+    <div class="panic-box">
+      <div class="panic-title" data-i18n="panicTitle">Sebentar ya…</div>
+      <div class="panic-sub" data-i18n="panicSub">Stream dijeda sebentar. Segera kembali.</div>
+    </div>
+  </div>
+
+  <script type="module" src="js/overlay.js"></script>
+</body>
+</html>

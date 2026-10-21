@@ -1,0 +1,13 @@
+/* Self-hosted (SIL Open Font License, see the OFL files next to the fonts), so OBS needs no internet for type. */
+@font-face {
+  font-family: 'Unbounded';
+  src: url('../fonts/Unbounded.woff') format('woff');
+  font-weight: 200 900;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('../fonts/PlusJakartaSans.woff') format('woff');
+  font-weight: 200 800;
+  font-display: block;
+}
