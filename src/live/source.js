@@ -1,6 +1,6 @@
 // ChatSource: the one interface between a live platform and the game.
 //
-// An adapter (Streamchime, the simulator) extends ChatSource and calls
+// An adapter (TikTok, the simulator) extends ChatSource and calls
 //   onChat(user, text)   onJoin(user)   onFollow(user)   onLike(user, count)   onGift(user, giftName, count)
 // whenever something happens. The server listens with source.on('chat' | 'join' | ...).
 // A user is { id, name, nick?, avatar?, sim? }: id is stable, name is the @handle.

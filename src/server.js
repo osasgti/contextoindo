@@ -16,7 +16,7 @@ import { Game, PHASE } from './game/game.js';
 import { ScoreStore } from './scores.js';
 import { SettingsStore } from './settings.js';
 import { SimSource } from './live/sim.js';
-import { StreamchimeSource } from './live/streamchime.js';
+import { TikTokSource } from './live/tiktok.js';
 import { RotatingLog } from './eventlog.js';
 import { HealthMonitor } from './health.js';
 
@@ -52,7 +52,7 @@ export function createApp({ config, dict, secrets, tiers = null, vectors = null,
   // the simulator guesses real words that have vectors, so its guesses can be ranked
   const simWords = vectors?.words?.length ? vectors.words : [...(dict.words ?? [])].filter((w) => /^[a-z]{3,10}$/.test(w));
   const sim = new SimSource({ game, words: simWords, intensity: config.simIntensity });
-  const live = liveSource ?? new StreamchimeSource({ appKey: config.streamchimeKey, username: config.tiktokUsername, log, debug: config.debugLive });
+  const live = liveSource ?? new TikTokSource({ username: config.tiktokUsername, log, debug: config.debugLive });
 
   const health = new HealthMonitor({ now });
   health.start();
@@ -163,7 +163,7 @@ export function createApp({ config, dict, secrets, tiers = null, vectors = null,
   const status = () => ({
     live: live.live,
     liveStatus: live.status ?? (live.live ? 'live' : 'off'),
-    liveConfigured: !!(config.streamchimeKey && config.tiktokUsername),
+    liveConfigured: !!config.tiktokUsername,
     username: config.tiktokUsername || null,
     sim: sim.running,
     overlays: overlays.size,

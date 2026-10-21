@@ -28,7 +28,7 @@ const T = {
     landscapeLink: 'Lanskap 1920x1080', portraitLink: 'Potret 1080x1920',
     idle: 'Belum mulai', playing: 'Berjalan', break: 'Jeda', noRound: 'Belum ada ronde', roundN: 'Ronde {n}',
     letters: '{n} huruf', unknownClass: 'jenis kata tidak diketahui', revealed: 'terbuka: {x}',
-    liveOn: 'LIVE @{u}', liveOff: 'LIVE mati', liveNoKey: 'LIVE: belum ada STREAMCHIME_APP_KEY', liveConnecting: 'LIVE: menyambung…', simOn: 'Simulator menyala',
+    liveOn: 'LIVE @{u}', liveOff: 'LIVE mati', liveNoUser: 'LIVE: belum ada TIKTOK_USERNAME', liveConnecting: 'LIVE: menyambung…', simOn: 'Simulator menyala',
     overlays: '{n} overlay', noOverlay: 'Overlay belum terbuka', audioRunning: 'Audio overlay jalan', audioBlocked: 'Audio overlay diblokir: klik overlay sekali (Interact di OBS)', audioOff: 'Audio overlay mati',
     nextSet: 'Kata berikutnya: {w}', nextRandom: 'Kata berikutnya dipilih acak.', notInKbbi: 'Kata itu tidak ada di KBBI.',
     played: 'Terkirim', alreadyPlaying: 'Ronde sedang berjalan.', simBlocked: 'Simulator tidak bisa jalan saat LIVE.', wins: '{n} menang', count: '{n} pemain', saved: 'Tersimpan',
@@ -69,7 +69,7 @@ const T = {
     landscapeLink: 'Landscape 1920x1080', portraitLink: 'Portrait 1080x1920',
     idle: 'Not started', playing: 'Playing', break: 'Break', noRound: 'No round yet', roundN: 'Round {n}',
     letters: '{n} letters', unknownClass: 'word class unknown', revealed: 'open: {x}',
-    liveOn: 'LIVE @{u}', liveOff: 'LIVE off', liveNoKey: 'LIVE: no STREAMCHIME_APP_KEY yet', liveConnecting: 'LIVE: connecting…', simOn: 'Simulator on',
+    liveOn: 'LIVE @{u}', liveOff: 'LIVE off', liveNoUser: 'LIVE: no TIKTOK_USERNAME yet', liveConnecting: 'LIVE: connecting…', simOn: 'Simulator on',
     overlays: '{n} overlay(s)', noOverlay: 'No overlay open', audioRunning: 'Overlay audio running', audioBlocked: 'Overlay audio blocked: click the overlay once (Interact in OBS)', audioOff: 'Overlay audio off',
     nextSet: 'Next word: {w}', nextRandom: 'The next word is random.', notInKbbi: 'That word is not in KBBI.',
     played: 'Sent', alreadyPlaying: 'A round is already running.', simBlocked: 'The simulator cannot run while LIVE.', wins: '{n} wins', count: '{n} players', saved: 'Saved',
@@ -173,8 +173,8 @@ function render() {
     : status.sim
       ? t('simOn')
       : !status.liveConfigured
-        ? t('liveNoKey')
-        : status.liveStatus === 'reconnecting'
+        ? t('liveNoUser')
+        : ['connecting', 'reconnecting'].includes(status.liveStatus)
           ? t('liveConnecting')
           : t('liveOff');
   const audio = status.overlayAudio || [];
@@ -270,7 +270,7 @@ function renderHealth(h) {
   if (!h) return;
   const ago = h.lastEventAt ? Math.max(0, Math.round((Date.now() + offset - h.lastEventAt) / 1000)) : null;
   const st = S.status;
-  const tiktok = st.live ? t('liveOn', { u: st.username }) : st.sim ? t('simOn') : !st.liveConfigured ? t('liveNoKey') : t(st.liveStatus === 'reconnecting' ? 'liveConnecting' : 'liveOff');
+  const tiktok = st.live ? t('liveOn', { u: st.username }) : st.sim ? t('simOn') : !st.liveConfigured ? t('liveNoUser') : t(['connecting', 'reconnecting'].includes(st.liveStatus) ? 'liveConnecting' : 'liveOff');
   const lag = h.loopLagMs ?? 0;
   const rows = [
     ['hTikTok', tiktok, st.live ? 'ok' : st.sim ? 'warn' : 'bad'],

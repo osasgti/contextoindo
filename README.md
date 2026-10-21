@@ -16,7 +16,7 @@ You need Node.js 22 or newer, and Python 3 if you rebuild the word list.
 ```bash
 git clone https://github.com/osasgti/contextoindo.git
 cd contextoindo
-npm install          # installs the Streamchime SDK (the only dependency, optional)
+npm install          # installs piratetok-live-js, the TikTok LIVE connector
 cp .env.example .env # then fill in the values (see below)
 ```
 
@@ -38,7 +38,7 @@ For the real game, put the data in `data/`. This folder is git-ignored and must 
 Commands:
 
 ```bash
-npm start            # real game: connects to TikTok LIVE if STREAMCHIME_APP_KEY is set
+npm start            # real game: connects to TikTok LIVE if TIKTOK_USERNAME is set
 npm run sim          # simulator only: fake viewers, never connects to LIVE
 npm run test-mode    # the same as npm run sim
 npm run demo         # no data needed: sample dictionary, sample vectors, simulator
@@ -48,7 +48,7 @@ npm run bench        # times the ranking and the guess flood
 npm run build-secrets
 ```
 
-If `npm start` can't connect to LIVE (no key, no username, or an error), it says why in the terminal and starts the simulator. Turn the simulator off on the control page. It also turns off by itself once LIVE connects, and it can't be turned on while LIVE is connected.
+If `npm start` can't connect to LIVE (no username, the streamer is not live yet, or an error), it says why in the terminal and starts the simulator. Turn the simulator off on the control page. It also turns off by itself once LIVE connects, and it can't be turned on while LIVE is connected.
 
 ## Environment variables
 
@@ -58,7 +58,6 @@ See `.env.example` for a copy you can fill in.
 | --- | --- | --- |
 | `VECTORS_PATH` | empty (demo: `test/fixtures/vectors.vec`) | **Required for ranking.** Path to a word2vec text file. Without it the game still starts, says so in the terminal and on the control page, and every guess is out of range. |
 | `VECTORS_MAX_LINES` | `200000` | How many lines of the vector file to read. The file is sorted by frequency, so this keeps the common words. |
-| `STREAMCHIME_APP_KEY` | empty | Streamchime app key for TikTok LIVE. Get a free Hobby key at streamchime.com/app/developers. |
 | `TIKTOK_USERNAME` | empty | The TikTok account to read chat from, without the `@`. |
 | `HINT_GIFT` | `Rose` | Gift that opens one letter. You can also change it on the control page. |
 | `KBBI_CSV` | `./data/kbbi.csv` | Path to the KBBI CSV. |
@@ -70,7 +69,7 @@ See `.env.example` for a copy you can fill in.
 | `HOST` | `127.0.0.1` | Keeps the control page on this computer only. |
 | `CONTROL_KEY` | empty | Password for the control page (`/control?key=...`). When `HOST` is not localhost and no key is set, one is generated and printed at startup. |
 | `AUTO_START` | off | Start a round as soon as the server starts. |
-| `DEBUG_LIVE` | off | Print every raw Streamchime event, to check the field names. |
+| `DEBUG_LIVE` | off | Print every raw TikTok event, to check the field names. |
 | `DATA_DIR` | `./data` | Where settings, scores and logs are saved. |
 | `SIM_INTENSITY` | `1` | How busy the simulator's chat is. |
 
@@ -232,7 +231,7 @@ src/
   eventlog.js          rotating JSON-lines event log
   health.js            CPU, memory, event-loop lag, last event time
   live/source.js       ChatSource interface (onChat, onJoin, onFollow, onLike, onGift)
-  live/streamchime.js  the only TikTok-specific file
+  live/tiktok.js       the only TikTok-specific file (piratetok-live-js)
   live/sim.js          simulator
 public/
   index.html           overlay      control.html   control page

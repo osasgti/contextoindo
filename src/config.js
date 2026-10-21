@@ -39,7 +39,6 @@ export function loadConfig(argv = process.argv.slice(2), env = process.env) {
     vectorsPath: env.VECTORS_PATH ? resolve(env.VECTORS_PATH) : demo ? fixture('vectors.vec') : '',
     vectorsMaxLines: Number(env.VECTORS_MAX_LINES) || 200000,
     dataDir: resolve(env.DATA_DIR || 'data'),
-    streamchimeKey: String(env.STREAMCHIME_APP_KEY || '').trim(),
     tiktokUsername: String(env.TIKTOK_USERNAME || '').replace(/^@/, '').trim(),
     hintGift: String(env.HINT_GIFT || '').trim() || 'Rose',
     controlKey: String(env.CONTROL_KEY || '').trim(),

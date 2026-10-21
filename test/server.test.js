@@ -8,7 +8,6 @@ import { createApp } from '../src/server.js';
 import { loadKbbi } from '../src/kbbi.js';
 import { loadSecrets } from '../src/secrets.js';
 import { ChatSource } from '../src/live/source.js';
-import { chatText, giftFrom, likeCount, StreamchimeSource, userFrom } from '../src/live/streamchime.js';
 import { SimSource } from '../src/live/sim.js';
 
 const FIX = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -144,25 +143,6 @@ test('static files are served and paths cannot escape public/', async () => {
   } finally {
     await s.close();
   }
-});
-
-test('Streamchime event mapping', () => {
-  const e = { type: 'chat', actor: { id: 123, handle: 'nadia.kw', display_name: 'Nadia', avatar_url: 'https://x/a.jpg' }, payload: { text: '!rumah' } };
-  assert.deepEqual(userFrom(e), { id: '123', name: 'nadia.kw', nick: 'Nadia', avatar: 'https://x/a.jpg' });
-  assert.equal(chatText(e), '!rumah');
-  assert.deepEqual(giftFrom({ payload: { gift_name: 'Rose', repeat_count: 3 } }), { name: 'Rose', count: 3 });
-  assert.deepEqual(giftFrom({ payload: { gift: { name: 'Rose' } } }), { name: 'Rose', count: 1 });
-  assert.equal(likeCount({ payload: { count: 15 } }), 15);
-  assert.equal(userFrom({ actor: { unique_id: 'budi' } }).id, 'budi');
-  assert.equal(userFrom({}), null);
-});
-
-test('Streamchime without a key logs a clear message and stays off', async () => {
-  const lines = [];
-  const src = new StreamchimeSource({ appKey: '', username: 'me', log: (l) => lines.push(l) });
-  assert.equal(await src.start(), false);
-  assert.equal(src.live, false);
-  assert.match(lines.join('\n'), /STREAMCHIME_APP_KEY is not set[\s\S]*simulator/);
 });
 
 test('ChatSource normalises users and drops events without one', () => {
