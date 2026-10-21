@@ -136,9 +136,7 @@ function renderTop(st) {
   const r = st.round;
   $('guessCount').textContent = fmtNum(r?.guessCount ?? 0);
   $('lastWord').textContent = r?.lastWord ?? '–';
-  const vector = st.mode === 'vector';
-  $('modeText').textContent = t(vector ? 'modeVector' : 'modeLetters');
-  $('modeBadge').classList.toggle('is-vector', vector);
+  $('modeText').textContent = t('modeVector');
 }
 
 function classLabel(cls) {
@@ -226,40 +224,30 @@ function renderHero(st) {
   }
 }
 
-function rowMeter(e, mode) {
-  if (mode === 'vector' && e.outOfRange) return `<div class="row-meter"><span class="row-val out" style="grid-column:1/-1;text-align:left">${esc(t('outOfRange'))}</span></div>`;
-  const v = mode === 'vector' ? e.closeness : e.warmth;
-  const val = mode === 'vector' ? '' : `${Math.round(v * 100)}%`;
-  return `<div class="row-meter"><div class="bar"><div class="bar-fill"></div></div><span class="row-val">${val}</span></div>`;
+function rowMeter(e) {
+  if (e.outOfRange) return `<div class="row-meter"><span class="row-val out" style="grid-column:1/-1;text-align:left">${esc(t('outOfRange'))}</span></div>`;
+  return `<div class="row-meter"><div class="bar"><div class="bar-fill"></div></div><span class="row-val"></span></div>`;
 }
 
-function wordHtml(e, mode) {
-  if (mode === 'vector' || !e.letters) return `<span class="word-text">${esc(e.word)}</span>`;
-  const chars = [...e.word];
-  const size = chars.length <= 12 ? 38 : Math.max(22, Math.floor(520 / chars.length) - 4);
-  return chars.map((ch, i) => (ch === '-' ? '<span class="tile dash">-</span>' : `<span class="tile ${e.letters[i]}" style="--t:${size}px;--i:${i}">${esc(ch)}</span>`)).join('');
-}
-
-function buildRow(e, mode) {
+function buildRow(e) {
   const u = shown(e.user);
   const li = el('li', 'row');
   li.dataset.id = e.id;
-  li.dataset.mode = mode;
   li.dataset.safe = safeFlag();
-  li.appendChild(el('span', `row-pos${mode === 'vector' ? ' rank' : ''}`));
+  li.appendChild(el('span', 'row-pos rank'));
   li.appendChild(avatarEl(u));
   li.appendChild(el('span', 'row-name', esc(u.name)));
-  li.appendChild(el('span', 'row-word', wordHtml(e, mode)));
-  li.insertAdjacentHTML('beforeend', rowMeter(e, mode));
+  li.appendChild(el('span', 'row-word', `<span class="word-text">${esc(e.word)}</span>`));
+  li.insertAdjacentHTML('beforeend', rowMeter(e));
   return li;
 }
 
 /** rk: 1 for the best row of the board down to 0 for the last one. It tints and fades the rows. */
-function decorateRow(li, e, pos, mode, r, rk = 0.5) {
-  const v = mode === 'vector' ? e.closeness ?? 0 : e.warmth ?? 0;
+function decorateRow(li, e, r, rk = 0.5) {
+  const v = e.closeness ?? 0;
   li.style.setProperty('--v', String(e.outOfRange ? 0 : v));
   li.style.setProperty('--rk', rk.toFixed(2));
-  li.querySelector('.row-pos').textContent = mode === 'vector' ? (e.rank != null ? `#${fmtNum(e.rank)}` : '–') : String(pos);
+  li.querySelector('.row-pos').textContent = e.rank != null ? `#${fmtNum(e.rank)}` : '–';
   li.classList.toggle('hot', !e.outOfRange && v >= 0.67);
   li.classList.toggle('warm', !e.outOfRange && v >= 0.34 && v < 0.67);
   li.classList.toggle('is-new', e.id === r.newest?.id);
@@ -328,29 +316,28 @@ function renderBoard(st) {
     $('more').textContent = '';
     return;
   }
-  const mode = r.mode;
   // pinned newest guess, like Contexto: you always see your own word land
-  const latestKey = r.newest ? `${r.newest.id}:${mode}:${safeFlag()}` : null;
+  const latestKey = r.newest ? `${r.newest.id}:${safeFlag()}` : null;
   if (r.newest && S.latestId !== latestKey) {
     S.latestId = latestKey;
     latest.innerHTML = '';
     latest.appendChild(el('div', 'latest-label', esc(t('latest'))));
-    const row = buildRow(r.newest, mode);
+    const row = buildRow(r.newest);
     playIn(row);
     latest.appendChild(row);
   }
   const pinned = latest.querySelector('.row');
   if (pinned && r.newest) {
     const pos = r.board.findIndex((e) => e.id === r.newest.id) + 1;
-    decorateRow(pinned, r.newest, pos || '–', mode, r, 0.6);
+    decorateRow(pinned, r.newest, r, 0.6);
     pinned.classList.remove('is-new');
   }
 
   const rowH = 56 + 6;
   const cap = Math.max(3, Math.floor((rows.clientHeight + 6) / rowH));
   const items = r.board.slice(0, cap);
-  const build = (e) => buildRow(e, mode);
-  build.stale = (node) => node.dataset.mode !== mode || node.dataset.safe !== safeFlag();
+  const build = (e) => buildRow(e);
+  build.stale = (node) => node.dataset.safe !== safeFlag();
   let climbers = 0;
   reconcile(
     rows,
@@ -358,7 +345,7 @@ function renderBoard(st) {
     (e) => e.id,
     build,
     (node, e, i, isNew) => {
-      decorateRow(node, e, i + 1, mode, r, items.length > 1 ? 1 - i / (items.length - 1) : 1);
+      decorateRow(node, e, r, items.length > 1 ? 1 - i / (items.length - 1) : 1);
       if (isNew && e.id === r.newest?.id) playIn(node);
     },
     (node, dx, dy) => {
@@ -593,7 +580,7 @@ function buildPopup(p) {
       <p class="card-kicker">${esc(t('roundSub', { len: t('letters', { n: d.length }), cls: classLabel(d.wordClass) }))}</p>
       <h3 class="card-title">${esc(t('roundStart', { n: d.no }))}</h3>
       <div class="rules">
-        <div class="rule"><div class="rule-icon">${ICONS.chat}</div><div class="rule-title">${esc(t('ruleGuessT'))}</div><div class="rule-text">${esc(t(d.mode === 'vector' ? 'ruleGuessXv' : 'ruleGuessX'))}</div></div>
+        <div class="rule"><div class="rule-icon">${ICONS.chat}</div><div class="rule-title">${esc(t('ruleGuessT'))}</div><div class="rule-text">${esc(t('ruleGuessXv'))}</div></div>
         <div class="rule"><div class="rule-icon">${ICONS.bang}</div><div class="rule-title">${t('rulePrefixT', { cmd: '<kbd>!kata</kbd>' })}</div><div class="rule-text">${t('rulePrefixX', { ex: '<kbd>!rumah</kbd>' })}</div></div>
         <div class="rule"><div class="rule-icon">${ICONS.clock}</div><div class="rule-title">${esc(t('ruleCooldownT', { s }))}</div><div class="rule-text">${esc(t('ruleCooldownX', { s }))}</div></div>
       </div>`;
@@ -680,7 +667,7 @@ function buildPopup(p) {
   if (p.type === 'streak') body.innerHTML = `<div class="mini-title">${esc(t('streakTitle', { name: u.name, n: d.count }))}</div><div class="mini-sub">${esc(t('streakSub', { b: d.bonus }))}</div>`;
   if (p.type === 'close') {
     const e = d.entry;
-    const sub = d.mode === 'vector' ? t('closeSubRank', { word: e.word, rank: e.rank }) : t('closeSubLetters', { word: e.word, pct: Math.round((e.warmth ?? 0) * 100) });
+    const sub = t('closeSubRank', { word: e.word, rank: e.rank });
     body.innerHTML = `<div class="mini-title">${esc(t('closeTitle', { name: u.name }))}</div><div class="mini-sub">${esc(sub)}</div>`;
     mini.appendChild(body);
     mini.appendChild(el('span', 'mini-icon mini-icon-close', ICONS.target));
@@ -790,11 +777,10 @@ function onEvt(evt) {
       if (evt.first) toast(e);
       S.pulse = Math.min(1, S.pulse + 0.12);
       if (evt.win) break; // the fanfare follows
-      const v = e.outOfRange ? 0 : e.warmth ?? e.closeness ?? 0;
+      const v = e.outOfRange ? 0 : e.closeness ?? 0;
       sound.tick(v);
       if (v >= 0.67) sound.hot();
       else if (v < 0.2) sound.cold();
-      if (e.letters) sound.flipWord(Math.min([...e.word].length, 9), { spacing: 0.055, peak: 0.035 });
       // a new closest guess gets a soft chord
       if (!e.outOfRange && v > S.bestHeat + 0.03) {
         S.bestHeat = v;

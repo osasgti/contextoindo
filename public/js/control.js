@@ -15,7 +15,7 @@ const T = {
     start: 'Mulai ronde', skip: 'Lewati kata', reveal: 'Buka jawaban', nextWord: 'Kata berikutnya', nextWordPh: 'acak dari daftar', set: 'Atur', random: 'Acak',
     controls: 'Kendali', simulator: 'Simulator', simNote: 'Penonton palsu untuk mencoba. Mati otomatis saat LIVE.', simLive: 'Tidak bisa dinyalakan saat LIVE tersambung.',
     overlaySound: 'Suara overlay', overlaySoundNote: 'Musik dan efek di OBS.', layout: 'Tata letak', landscape: 'Lanskap', portrait: 'Potret',
-    mode: 'Mode', modeLetters: 'Huruf', modeVector: 'Makna', modeNoVectors: 'Mode makna butuh VECTORS_PATH.', modeVectorsOk: 'Vektor kata dimuat.',
+    mode: 'Mode', modeVector: 'Makna', modeNoVectors: 'VECTORS_PATH belum diisi: semua tebakan di luar jangkauan.', modeVectorsOk: 'Vektor kata dimuat.',
     boardTop: 'Papan skor overlay', resetSession: 'Reset sesi', clearBoard: 'Bersihkan papan skor',
     resetHint: 'Reset sesi menghapus poin dan rentetan menang sesi ini. Bersihkan papan skor hanya menghapus poin.',
     settings: 'Pengaturan', hintGift: 'Gift petunjuk', hintGiftNote: 'Nama gift yang membuka 1 huruf.', cooldown: 'Jeda tebakan', cooldownNote: 'Detik antar tebakan per penonton.',
@@ -54,7 +54,7 @@ const T = {
     start: 'Start round', skip: 'Skip word', reveal: 'Reveal word', nextWord: 'Next word', nextWordPh: 'random from the list', set: 'Set', random: 'Random',
     controls: 'Controls', simulator: 'Simulator', simNote: 'Fake viewers for testing. Turns off by itself when LIVE.', simLive: 'Cannot run while LIVE is connected.',
     overlaySound: 'Overlay sound', overlaySoundNote: 'Music and effects in OBS.', layout: 'Layout', landscape: 'Landscape', portrait: 'Portrait',
-    mode: 'Mode', modeLetters: 'Letters', modeVector: 'Meaning', modeNoVectors: 'Meaning mode needs VECTORS_PATH.', modeVectorsOk: 'Word vectors loaded.',
+    mode: 'Mode', modeVector: 'Meaning', modeNoVectors: 'VECTORS_PATH is not set: every guess is out of range.', modeVectorsOk: 'Word vectors loaded.',
     boardTop: 'Overlay scoreboard', resetSession: 'Reset session', clearBoard: 'Clear scoreboard',
     resetHint: 'Reset session clears this session’s points and win streak. Clear scoreboard clears points only.',
     settings: 'Settings', hintGift: 'Hint gift', hintGiftNote: 'Gift name that opens 1 letter.', cooldown: 'Guess cooldown', cooldownNote: 'Seconds between guesses per viewer.',
@@ -194,7 +194,7 @@ function render() {
   $('cGuesses').textContent = String(r?.guessCount ?? 0);
   $('cGifts').textContent = r ? `${r.giftsUsed}/${r.giftsMax}` : '0/3';
   const best = r?.board?.[0];
-  $('cBest').textContent = best ? `${best.word}${r.mode === 'vector' ? (best.rank ? ` #${best.rank}` : '') : ` ${Math.round(best.warmth * 100)}%`}` : '–';
+  $('cBest').textContent = best ? `${best.word}${best.rank ? ` #${best.rank}` : ''}` : '–';
   document.querySelector('[data-action="start"]').disabled = st.phase === 'playing';
   document.querySelector('[data-action="reveal"]').disabled = st.phase !== 'playing';
   if (Date.now() > nextErrorUntil) {
@@ -207,8 +207,7 @@ function render() {
   $('simNote').textContent = status.live ? t('simLive') : t('simNote');
   setSwitch('swSound', settings.sound);
   setSeg('segLayout', settings.layout);
-  setSeg('segMode', st.mode, st.vectorsAvailable ? [] : ['vector']);
-  $('modeNote').textContent = st.vectorsAvailable ? t('modeVectorsOk') : t('modeNoVectors');
+    $('modeNote').textContent = st.vectorsAvailable ? t('modeVectorsOk') : t('modeNoVectors');
   setSeg('segTop', settings.boardTop);
 
   // settings (do not overwrite a field the streamer is typing in)
@@ -355,7 +354,6 @@ const segHandler = (id, key, conv = (v) => v) =>
     if (b && !b.disabled) setSetting({ [key]: conv(b.dataset.v) });
   });
 segHandler('segLayout', 'layout');
-segHandler('segMode', 'mode');
 segHandler('segTop', 'boardTop', Number);
 segHandler('segLang', 'lang');
 segHandler('segDiff', 'difficulty');

@@ -98,7 +98,8 @@ body.is-hot #guessCount { color: var(--ember); text-shadow: 0 0 18px rgba(255, 1
 
 /* ------------------------------------------------------------ stage + layout */
 .stage {
-  position: absolute;
+  /* fixed, not absolute: a 1920px stage must not widen the page on a phone preview */
+  position: fixed;
   left: 0;
   top: 0;
   width: 1920px;
