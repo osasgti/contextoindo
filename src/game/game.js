@@ -15,7 +15,8 @@ export const RULES = {
   breakMs: 15000,
   firstLetterMs: 180000,
   revealMs: 360000,
-  giftHintsPerRound: 3,
+  giftHintsPerRound: 1, // one Rose opens a letter per round; more Roses wait in line for later rounds
+  giftQueueMax: 20, // Roses waiting in line; any beyond this are thanked and dropped
   giftHintsPerViewer: 3, // one viewer may use every hint of a round; lower it to share them out
   boardSize: 60, // guesses sent to the overlay (best first)
   joinCardEveryMs: 60000,
@@ -64,6 +65,7 @@ export class Game extends EventEmitter {
     this.roundNo = 0;
     this.prevSecret = null;
     this.nextOverride = null;
+    this.giftQueue = []; // public users whose Rose is waiting for a round with a free gift hint
     this.breakEndsAt = 0;
     this.seq = 0;
     this.lastGuessAt = new Map();
@@ -151,6 +153,7 @@ export class Game extends EventEmitter {
     this.recentGuessAt = [];
     this.lastHotAt = null;
     this._evt('round', { no: r.no, length: r.chars.length, wordClass: r.wordClass, startedAt: t });
+    this._applyQueuedGift(r);
     this._changed();
     return r;
   }
@@ -491,8 +494,10 @@ export class Game extends EventEmitter {
   }
 
   /**
-   * The configured hint gift reveals one hidden letter. One per viewer, three per round, never points.
-   * Every other gift (and a hint gift that cannot open a letter) only gets a thank-you chime.
+   * The configured hint gift reveals one hidden letter, one per round and never points.
+   * A hint gift that cannot open a letter now (a second Rose in the round, a break, a panic or no
+   * hidden letter left) waits in line and opens its letter at the start of a later round.
+   * Every other gift only gets a thank-you chime.
    */
   handleGift(user, giftName, count = 1) {
     if (!user?.id) return 'ignored';
@@ -501,27 +506,47 @@ export class Game extends EventEmitter {
       return status;
     };
     if (norm(giftName) !== norm(this.hintGift)) return thanks('other-gift');
-    if (this.frozen) return 'frozen';
-    if (this.phase !== PHASE.PLAYING) return thanks('not-playing');
+    if (this.frozen) return 'frozen'; // panic drops gifts, as it drops chat
     const r = this.round;
-    if ((r.giftsBy.get(user.id) ?? 0) >= this.rules.giftHintsPerViewer) return thanks('viewer-limit');
-    if (r.giftCount >= this.rules.giftHintsPerRound) return thanks('round-limit');
+    const playing = this.phase === PHASE.PLAYING;
+    if (!playing || r.giftCount >= this.rules.giftHintsPerRound || (r.giftsBy.get(user.id) ?? 0) >= this.rules.giftHintsPerViewer) {
+      return this._queueGift(user, thanks);
+    }
     const index = this._pickHiddenLetter(r);
-    if (index == null) return thanks('no-letters');
-    this._openLetter(r, index, 'gift', publicUser(user));
+    if (index == null) return this._queueGift(user, thanks);
+    this._openGiftHint(r, publicUser(user), index);
+    return 'hint';
+  }
+
+  _queueGift(user, thanks) {
+    if (this.giftQueue.length >= this.rules.giftQueueMax) return thanks('queue-full');
+    this.giftQueue.push(publicUser(user));
+    this._changed();
+    return thanks('queued');
+  }
+
+  /** At the start of a round, the first queued Rose opens its letter. Nothing is lost if no letter is free yet. */
+  _applyQueuedGift(r) {
+    if (!this.giftQueue.length) return;
+    const index = this._pickHiddenLetter(r);
+    if (index == null) return;
+    this._openGiftHint(r, this.giftQueue.shift(), index);
+  }
+
+  _openGiftHint(r, user, index) {
+    this._openLetter(r, index, 'gift', user);
     r.giftsBy.set(user.id, (r.giftsBy.get(user.id) ?? 0) + 1);
     r.giftCount++;
     this._evt('hint', {
       kind: 'gift',
       index,
       letter: r.chars[index],
-      user: publicUser(user),
+      user,
       gift: this.hintGift,
       used: r.giftCount,
       max: this.rules.giftHintsPerRound,
     });
     this._changed();
-    return 'hint';
   }
 
   // ------------------------------------------------------------------ boards
@@ -612,6 +637,7 @@ export class Game extends EventEmitter {
       lastSecret: this.frozen ? null : this.round?.secret ?? null,
       nextOverride: this.frozen ? null : this.nextOverride,
       vectorsAvailable: !!this.vectors,
+      giftQueue: this.giftQueue.length,
       secretsCount: this.secrets.length,
       difficulty: this.difficulty,
       tierCounts: { easy: this.tiers.easy.length, normal: this.tiers.normal.length, hard: this.tiers.hard.length },

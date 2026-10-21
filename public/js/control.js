@@ -192,7 +192,7 @@ function render() {
     $('secretMeta').textContent = [t('letters', { n: r.length }), r.wordClass || t('unknownClass'), open ? t('revealed', { x: open }) : ''].filter(Boolean).join(' · ');
   } else $('secretMeta').textContent = '';
   $('cGuesses').textContent = String(r?.guessCount ?? 0);
-  $('cGifts').textContent = r ? `${r.giftsUsed}/${r.giftsMax}` : '0/3';
+  $('cGifts').textContent = `${r ? `${r.giftsUsed}/${r.giftsMax}` : '0/1'}${S.state.giftQueue ? ` +${S.state.giftQueue}` : ''}`;
   const best = r?.board?.[0];
   $('cBest').textContent = best ? `${best.word}${best.rank ? ` #${best.rank}` : ''}` : '–';
   document.querySelector('[data-action="start"]').disabled = st.phase === 'playing';

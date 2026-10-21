@@ -121,7 +121,7 @@ If the control page says overlay audio is blocked, right-click the source in OBS
    - A word not in KBBI gets the reply "Kata tidak ada dalam KBBI." (see "Private replies").
 4. At 3:00 the first letter is revealed. At 6:00 the answer is revealed, nobody scores, and the 15-second break starts.
 5. The first correct guess wins and starts the break.
-6. **Gift hints**: the configured gift (default Rose) opens one random hidden letter. One viewer can use several per round, and a round allows 3 in total (`RULES.giftHintsPerRound` and `RULES.giftHintsPerViewer` in `src/game/game.js`). Gift hints never give points. Before 3:00 they never open the first letter, and they always leave at least one other letter hidden.
+6. **Gift hints**: the configured gift (default Rose) opens one random hidden letter. A round allows one gift hint (`RULES.giftHintsPerRound` in `src/game/game.js`). Any more gifts wait in a queue (up to `RULES.giftQueueMax`, 20), and each queued gift opens its letter at the start of a later round, first come first served. The control page shows the queue as `+n`. Gift hints never give points. Before 3:00 they never open the first letter, and they always leave at least one other letter hidden.
 7. Typing `!main` shows a player card with the viewer's name and win streak.
 
 ### Chat commands

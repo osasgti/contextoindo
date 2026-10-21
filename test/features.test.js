@@ -302,17 +302,17 @@ test('gifts other than the hint gift only produce a thank-you event', () => {
   game.handleGift(u('b'), 'Rose');
   assert.equal(of('hint').length, 1, 'the hint gift still opens a letter');
   assert.equal(of('gift').length, 1, 'and does not get a thank-you event on top');
-  assert.equal(game.handleGift(u('b'), 'Rose'), 'hint', 'the same viewer may gift again');
+  assert.equal(game.handleGift(u('b'), 'Rose'), 'queued', 'a second Rose in the round waits in the queue');
   game.handleGift(u('c'), 'Rose');
-  assert.equal(game.handleGift(u('d'), 'Rose'), 'round-limit');
-  assert.equal(of('gift').length, 2, 'a hint gift that cannot open a letter still gets thanked');
+  assert.equal(game.handleGift(u('d'), 'Rose'), 'queued');
+  assert.equal(of('gift').length, 4, 'a queued hint gift still gets thanked');
 });
 
 test('gift hints: a viewer limit below the round total still applies', () => {
-  const { game } = makeGame({ rules: { giftHintsPerViewer: 1 } });
+  const { game } = makeGame({ rules: { giftHintsPerViewer: 1, giftHintsPerRound: 3 } });
   game.startRound();
   assert.equal(game.handleGift(u('a'), 'Rose'), 'hint');
-  assert.equal(game.handleGift(u('a'), 'Rose'), 'viewer-limit');
+  assert.equal(game.handleGift(u('a'), 'Rose'), 'queued', 'the viewer limit sends the Rose to the queue');
   assert.equal(game.handleGift(u('b'), 'Rose'), 'hint');
 });
 

@@ -6,10 +6,10 @@ import { ScoreStore } from '../src/scores.js';
 
 const WORDS = ['tangga', 'rumah', 'lampu', 'gedung', 'atap', 'ganti', 'tanah', 'kopi', 'pintu', 'kota', 'laut', 'jalan', 'hujan', 'murah', 'tangan', 'sungai', 'rumput', 'pelita'];
 
-function makeGame({ secrets = ['tangga'], vectors = null, settings = {}, rng = () => 0.5, scores = null } = {}) {
+function makeGame({ secrets = ['tangga'], vectors = null, settings = {}, rng = () => 0.5, scores = null, rules = {} } = {}) {
   const clock = { t: 1_000_000 };
   const dict = { has: (w) => WORDS.includes(w), wordClass: (w) => (w === 'tangga' || w === 'rumah' ? 'Nomina' : null) };
-  const game = new Game({ dict, secrets, vectors, settings: { cooldownMs: 2000, hintGift: 'Rose', mode: 'letters', ...settings }, scores, now: () => clock.t, rng });
+  const game = new Game({ dict, secrets, vectors, settings: { cooldownMs: 2000, hintGift: 'Rose', mode: 'letters', ...settings }, scores, now: () => clock.t, rng, rules });
   const events = [];
   const replies = [];
   game.on('evt', (e) => events.push(e));
@@ -204,24 +204,27 @@ test('a timeout does not break a streak', () => {
   assert.equal(of('win').at(-1).streak, 2);
 });
 
-test('gift hints: configured gift only, several per viewer, 3 per round, no points', () => {
+test('gift hints: configured gift only, one per round, extra Roses queue for later rounds, no points', () => {
   const { game, of } = makeGame({ secrets: ['tangga'], rng: () => 0 });
   game.startRound();
   assert.equal(game.handleGift(u('a'), 'Galaxy'), 'other-gift');
   assert.equal(game.handleGift(u('a'), 'rose'), 'hint', 'name match ignores case');
-  assert.equal(game.handleGift(u('a'), 'Rose'), 'hint', 'the same viewer can gift again in one round');
-  assert.equal(game.handleGift(u('b'), 'Rose'), 'hint');
-  assert.equal(game.handleGift(u('c'), 'Rose'), 'round-limit');
-  const hints = of('hint');
-  assert.equal(hints.length, 3);
-  assert.ok(hints.every((h) => h.kind === 'gift' && h.index !== 0), 'first letter is saved for the 3-minute hint');
-  assert.equal(new Set(hints.map((h) => h.index)).size, 3, 'each gift reveals a new letter');
-  assert.deepEqual(hints.map((h) => h.used), [1, 2, 3]);
+  assert.equal(game.handleGift(u('a'), 'Rose'), 'queued', 'one Rose per round: the next one waits');
+  assert.equal(game.handleGift(u('b'), 'Rose'), 'queued');
+  assert.equal(game.handleGift(u('c'), 'Rose'), 'queued');
+  assert.equal(of('hint').length, 1, 'only the first Rose opens a letter this round');
+  assert.equal(game.controlState().giftQueue, 3, 'three Roses wait in line');
   assert.equal(game.leaderboard().length, 0, 'gift hints never award points');
-  // limits reset next round
+  // the queue opens one letter per round, first in line first
   game.reveal();
   game.startRound();
-  assert.equal(game.handleGift(u('a'), 'Rose'), 'hint');
+  const hints = of('hint');
+  assert.equal(hints.length, 2);
+  assert.equal(hints[1].user.id, 'a', 'the first queued Rose opens the next round');
+  assert.equal(hints[1].kind, 'gift');
+  assert.ok(hints.every((h) => h.index !== 0), 'first letter is saved for the 3-minute hint');
+  assert.equal(game.controlState().giftQueue, 2);
+  assert.equal(game.handleGift(u('d'), 'Rose'), 'queued', 'the round already has its one gift hint');
 });
 
 test('gift hint name is editable', () => {
@@ -235,19 +238,34 @@ test('gift hint name is editable', () => {
 test('gift hints never reveal the whole word', () => {
   const { game, advance } = makeGame({ secrets: ['atap'], rng: () => 0 });
   game.startRound();
-  assert.equal(game.handleGift(u('a'), 'Rose'), 'hint');
-  assert.equal(game.handleGift(u('b'), 'Rose'), 'hint');
-  assert.equal(game.handleGift(u('c'), 'Rose'), 'no-letters', 'one letter besides the first must stay hidden');
+  game.round.revealed.set(1, 'gift');
+  game.round.revealed.set(2, 'gift');
+  assert.equal(game.handleGift(u('a'), 'Rose'), 'queued', 'only one hidden letter besides the first is left, so the Rose waits');
   advance(180000);
   const hidden = 4 - game.publicState().round.revealed.length;
-  assert.equal(hidden, 1);
+  assert.equal(hidden, 1, 'the last letter is never opened');
 });
 
-test('gift during the break does nothing', () => {
-  const { game } = makeGame();
+test('gift during the break waits in the queue and opens a letter in the next round', () => {
+  const { game, of } = makeGame();
   game.startRound();
   game.reveal();
-  assert.equal(game.handleGift(u('a'), 'Rose'), 'not-playing');
+  assert.equal(game.handleGift(u('a'), 'Rose'), 'queued');
+  assert.equal(of('hint').length, 0, 'nothing opens during the break');
+  game.startRound();
+  assert.equal(of('hint').length, 1);
+  assert.equal(of('hint')[0].user.id, 'a');
+});
+
+test('the gift queue is bounded: Roses beyond giftQueueMax are thanked and dropped', () => {
+  const { game, of } = makeGame({ rules: { giftQueueMax: 2 } });
+  game.startRound();
+  game.handleGift(u('a'), 'Rose'); // opens a letter
+  assert.equal(game.handleGift(u('b'), 'Rose'), 'queued');
+  assert.equal(game.handleGift(u('c'), 'Rose'), 'queued');
+  assert.equal(game.handleGift(u('d'), 'Rose'), 'queue-full');
+  assert.equal(of('gift').length, 3, 'every Rose that cannot open a letter still gets a thank-you');
+  assert.equal(game.controlState().giftQueue, 2);
 });
 
 function vectorGame(opts = {}) {
