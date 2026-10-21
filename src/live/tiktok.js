@@ -1,7 +1,7 @@
 // The only TikTok-specific file: piratetok-live-js -> ChatSource.
 //
 // Needs TIKTOK_USERNAME. No API key: the library connects the way the TikTok website does.
-// Package: piratetok-live-js (installed by npm install). Set DEBUG_LIVE=1 to print every raw event.
+// Package: piratetok-live-js (installed by npm install). Set DEBUG_LIVE=1 to print every event as one line.
 import { ChatSource } from './source.js';
 
 // Quiet streams send no events for long stretches; the library default (60 s) would drop them.
@@ -155,9 +155,11 @@ export class TikTokSource extends ChatSource {
     return false;
   }
 
-  _debug(type, d) {
+  // One line per event, in the same style as the activity log: "[live:gift] Name sent Rose x3".
+  _debug(type, d, verb) {
     if (!this.debug) return;
-    this.log(`[live:${type}]`, String(JSON.stringify(d)).slice(0, 600));
+    const u = userFrom(d);
+    this.log(`[live:${type}] ${u ? u.name : '?'} ${verb}`);
   }
 
   async _connect() {
@@ -171,31 +173,31 @@ export class TikTokSource extends ChatSource {
     this.client = client;
 
     client.on(EventType.chat, (d) => {
-      this._debug('chat', d);
+      this._debug('chat', d, `says: ${chatText(d)}`);
       if (this._dup(d)) return;
       const text = chatText(d);
       if (text) this.onChat(userFrom(d), text);
     });
     client.on(EventType.gift, (d) => {
-      this._debug('gift', d);
+      this._debug('gift', d, `sent ${d?.gift?.name ?? d?.giftName ?? '?'}${Number(d?.repeatCount) > 1 ? ` x${d.repeatCount}` : ''}`);
       const g = giftFrom(d);
       if (!g || !g.name || this._dup(d)) return; // a streak still running, or a repeat
       this.onGift(userFrom(d), g.name, g.count);
     });
     client.on(EventType.like, (d) => {
-      this._debug('like', d);
+      this._debug('like', d, `sent ${likeCount(d)} likes`);
       if (this._dup(d)) return;
       const u = userFrom(d);
       if (u) this.onLike(u, likeCount(d));
     });
     client.on(EventType.follow, (d) => {
-      this._debug('follow', d);
+      this._debug('follow', d, 'followed');
       if (this._dup(d)) return;
       const u = userFrom(d);
       if (u) this.onFollow(u);
     });
     client.on(EventType.join, (d) => {
-      this._debug('join', d);
+      this._debug('join', d, 'joined');
       const u = userFrom(d);
       if (u) this.onJoin(u);
     });

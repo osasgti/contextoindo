@@ -69,7 +69,7 @@ See `.env.example` for a copy you can fill in.
 | `HOST` | `127.0.0.1` | Keeps the control page on this computer only. |
 | `CONTROL_KEY` | empty | Password for the control page (`/control?key=...`). When `HOST` is not localhost and no key is set, one is generated and printed at startup. |
 | `AUTO_START` | off | Start a round as soon as the server starts. |
-| `DEBUG_LIVE` | off | Print every raw TikTok event, to check the field names. |
+| `DEBUG_LIVE` | off | Print every TikTok event (chat, gift, like, follow, join) as one line in the terminal. |
 | `DATA_DIR` | `./data` | Where settings, scores and logs are saved. |
 | `SIM_INTENSITY` | `1` | How busy the simulator's chat is. |
 
