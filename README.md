@@ -31,7 +31,7 @@ For the real game, put the data in `data/`. This folder is git-ignored and must 
 | File | What it is |
 | --- | --- |
 | `data/kbbi.csv` | KBBI CSV. The `kata` column is the list of valid guesses. The game only reads it. It is copyrighted, so keep it private. |
-| `data/secret_words.txt` | Secret answers, one per line. Built by `scripts/build_secret_words.py`. Each secret needs a vector, or it is skipped. |
+| `data/secret_words.txt` | Secret answers, one per line. Built by `scripts/build_secret_words.py`, which keeps only words that have a vector in `VECTORS_PATH`, so every secret can be ranked. |
 | `data/blocklist.txt` | Words you removed by hand. The build script skips them. |
 | `data/cc.id.300.vec` | Word vectors: a word2vec text file, for example fastText Indonesian. This is what ranks the guesses. |
 
@@ -204,7 +204,8 @@ The overlay is built to stay under 5 ms of script per frame. Open `/?bench=1` to
 ## Rebuild the secret word list
 
 ```bash
-python scripts/build_secret_words.py            # reads data/kbbi.csv (or KBBI_CSV)
+python scripts/build_secret_words.py            # reads data/kbbi.csv (or KBBI_CSV); keeps only words with a vector in VECTORS_PATH (from .env)
+python scripts/build_secret_words.py --vectors "" # build without the vector filter
 # review data/secret_words_report.txt, add odd words to data/blocklist.txt, then run it again
 ```
 
